@@ -1,0 +1,5 @@
+file(GLOB tucker_src "*.cu")
+add_library(tucker-lib STATIC ${tucker_src})
+target_include_directories(tucker-lib PUBLIC ../include)
+target_link_libraries(tucker-lib Thrust fmt::fmt)
+target_compile_options(tucker-lib PRIVATE -Wall -Wextra)
