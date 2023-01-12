@@ -13,7 +13,7 @@ public:
 
   explicit COOTensor3() = default;
   explicit COOTensor3(const COOTensor3& other, const std::vector<index_t>& permutation);
-  explicit COOTensor3(const std::vector<index_t> &mode_sizes,
+  explicit COOTensor3(const std::vector<index_t> &shape,
                         const index_t mode, const index_t new_chunk_size);
   explicit COOTensor3(const std::string &filename, const bool starts_at_zero);
 
@@ -25,7 +25,7 @@ public:
   index_t nmodes;
   index_t nnz;
   index_t chunk_size;
-  std::vector<index_t> mode_sizes;
+  std::vector<index_t> shape;
   std::vector<index_t> mode_permutation;
   std::vector<thrust::device_vector<index_t>> d_modes;
   std::vector<thrust::host_vector<index_t>> h_modes;

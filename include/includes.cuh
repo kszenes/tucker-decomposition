@@ -1,10 +1,12 @@
 #ifndef INCLUDES_H
 #define INCLUDES_H
 
+#include <algorithm>
 #include <cassert>
 #include <fstream>
 #include <iomanip>
 #include <iostream>
+#include <numeric>
 #include <random>
 #include <vector>
 
@@ -13,5 +15,7 @@
 
 #include <fmt/core.h>
 #include <fmt/ranges.h>
+
+#include "timer.h"
 
 #endif /* INCLUDES_H */

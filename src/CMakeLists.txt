@@ -1,4 +1,4 @@
-file(GLOB tucker_src "*.cu")
+file(GLOB tucker_src "*.cu" "*.cpp")
 add_library(tucker-lib STATIC ${tucker_src})
 target_include_directories(tucker-lib PUBLIC ../include)
 target_link_libraries(tucker-lib Thrust fmt::fmt)

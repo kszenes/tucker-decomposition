@@ -1,0 +1,72 @@
+[
+{
+  "directory": "/users/kszenes/ParTI/tucker-decomp/Release",
+  "command": "/apps/ault/spack/opt/spack/linux-centos8-zen/gcc-8.4.1/cuda-11.8.0-fjdnxm6yggxxp75sb62xrxxmeg4s24ml/bin/nvcc -forward-unknown-to-host-compiler -DTHRUST_DEVICE_SYSTEM=THRUST_DEVICE_SYSTEM_CUDA -DTHRUST_HOST_SYSTEM=THRUST_HOST_SYSTEM_CPP --options-file CMakeFiles/tucker.dir/includes_CUDA.rsp  --extended-lambda -lineinfo -O3 -O3 -DNDEBUG --generate-code=arch=compute_70,code=[compute_70,sm_70] --generate-code=arch=compute_80,code=[compute_80,sm_80] -Wall -Wextra -std=c++17 -x cu -c /users/kszenes/ParTI/tucker-decomp/main.cu -o CMakeFiles/tucker.dir/main.cu.o",
+  "file": "/users/kszenes/ParTI/tucker-decomp/main.cu"
+},
+{
+  "directory": "/users/kszenes/ParTI/tucker-decomp/Release/_deps/fmt-build",
+  "command": "/usr/bin/c++  -I/users/kszenes/ParTI/tucker-decomp/Release/_deps/fmt-src/include -O3 -DNDEBUG -o CMakeFiles/fmt.dir/src/format.cc.o -c /users/kszenes/ParTI/tucker-decomp/Release/_deps/fmt-src/src/format.cc",
+  "file": "/users/kszenes/ParTI/tucker-decomp/Release/_deps/fmt-src/src/format.cc"
+},
+{
+  "directory": "/users/kszenes/ParTI/tucker-decomp/Release/_deps/fmt-build",
+  "command": "/usr/bin/c++  -I/users/kszenes/ParTI/tucker-decomp/Release/_deps/fmt-src/include -O3 -DNDEBUG -o CMakeFiles/fmt.dir/src/os.cc.o -c /users/kszenes/ParTI/tucker-decomp/Release/_deps/fmt-src/src/os.cc",
+  "file": "/users/kszenes/ParTI/tucker-decomp/Release/_deps/fmt-src/src/os.cc"
+},
+{
+  "directory": "/users/kszenes/ParTI/tucker-decomp/Release/_deps/googletest-build/googlemock",
+  "command": "/usr/bin/c++  -I/users/kszenes/ParTI/tucker-decomp/Release/_deps/googletest-src/googlemock/include -I/users/kszenes/ParTI/tucker-decomp/Release/_deps/googletest-src/googlemock -isystem /users/kszenes/ParTI/tucker-decomp/Release/_deps/googletest-src/googletest/include -isystem /users/kszenes/ParTI/tucker-decomp/Release/_deps/googletest-src/googletest -O3 -DNDEBUG -Wall -Wshadow -Wno-error=dangling-else -DGTEST_HAS_PTHREAD=1 -fexceptions -Wextra -Wno-unused-parameter -Wno-missing-field-initializers -o CMakeFiles/gmock.dir/src/gmock-all.cc.o -c /users/kszenes/ParTI/tucker-decomp/Release/_deps/googletest-src/googlemock/src/gmock-all.cc",
+  "file": "/users/kszenes/ParTI/tucker-decomp/Release/_deps/googletest-src/googlemock/src/gmock-all.cc"
+},
+{
+  "directory": "/users/kszenes/ParTI/tucker-decomp/Release/_deps/googletest-build/googlemock",
+  "command": "/usr/bin/c++  -isystem /users/kszenes/ParTI/tucker-decomp/Release/_deps/googletest-src/googlemock/include -isystem /users/kszenes/ParTI/tucker-decomp/Release/_deps/googletest-src/googlemock -isystem /users/kszenes/ParTI/tucker-decomp/Release/_deps/googletest-src/googletest/include -isystem /users/kszenes/ParTI/tucker-decomp/Release/_deps/googletest-src/googletest -O3 -DNDEBUG -Wall -Wshadow -Wno-error=dangling-else -DGTEST_HAS_PTHREAD=1 -fexceptions -Wextra -Wno-unused-parameter -Wno-missing-field-initializers -o CMakeFiles/gmock_main.dir/src/gmock_main.cc.o -c /users/kszenes/ParTI/tucker-decomp/Release/_deps/googletest-src/googlemock/src/gmock_main.cc",
+  "file": "/users/kszenes/ParTI/tucker-decomp/Release/_deps/googletest-src/googlemock/src/gmock_main.cc"
+},
+{
+  "directory": "/users/kszenes/ParTI/tucker-decomp/Release/_deps/googletest-build/googletest",
+  "command": "/usr/bin/c++  -I/users/kszenes/ParTI/tucker-decomp/Release/_deps/googletest-src/googletest/include -I/users/kszenes/ParTI/tucker-decomp/Release/_deps/googletest-src/googletest -O3 -DNDEBUG -Wall -Wshadow -Wno-error=dangling-else -DGTEST_HAS_PTHREAD=1 -fexceptions -Wextra -Wno-unused-parameter -Wno-missing-field-initializers -o CMakeFiles/gtest.dir/src/gtest-all.cc.o -c /users/kszenes/ParTI/tucker-decomp/Release/_deps/googletest-src/googletest/src/gtest-all.cc",
+  "file": "/users/kszenes/ParTI/tucker-decomp/Release/_deps/googletest-src/googletest/src/gtest-all.cc"
+},
+{
+  "directory": "/users/kszenes/ParTI/tucker-decomp/Release/_deps/googletest-build/googletest",
+  "command": "/usr/bin/c++  -isystem /users/kszenes/ParTI/tucker-decomp/Release/_deps/googletest-src/googletest/include -isystem /users/kszenes/ParTI/tucker-decomp/Release/_deps/googletest-src/googletest -O3 -DNDEBUG -Wall -Wshadow -Wno-error=dangling-else -DGTEST_HAS_PTHREAD=1 -fexceptions -Wextra -Wno-unused-parameter -Wno-missing-field-initializers -o CMakeFiles/gtest_main.dir/src/gtest_main.cc.o -c /users/kszenes/ParTI/tucker-decomp/Release/_deps/googletest-src/googletest/src/gtest_main.cc",
+  "file": "/users/kszenes/ParTI/tucker-decomp/Release/_deps/googletest-src/googletest/src/gtest_main.cc"
+},
+{
+  "directory": "/users/kszenes/ParTI/tucker-decomp/Release/src",
+  "command": "/apps/ault/spack/opt/spack/linux-centos8-zen/gcc-8.4.1/cuda-11.8.0-fjdnxm6yggxxp75sb62xrxxmeg4s24ml/bin/nvcc -forward-unknown-to-host-compiler -DTHRUST_DEVICE_SYSTEM=THRUST_DEVICE_SYSTEM_CUDA -DTHRUST_HOST_SYSTEM=THRUST_HOST_SYSTEM_CPP --options-file CMakeFiles/tucker-lib.dir/includes_CUDA.rsp  --extended-lambda -lineinfo -O3 -O3 -DNDEBUG --generate-code=arch=compute_70,code=[compute_70,sm_70] --generate-code=arch=compute_80,code=[compute_80,sm_80] -Wall -Wextra -std=c++17 -x cu -c /users/kszenes/ParTI/tucker-decomp/src/COOTensor3.cu -o CMakeFiles/tucker-lib.dir/COOTensor3.cu.o",
+  "file": "/users/kszenes/ParTI/tucker-decomp/src/COOTensor3.cu"
+},
+{
+  "directory": "/users/kszenes/ParTI/tucker-decomp/Release/src",
+  "command": "/apps/ault/spack/opt/spack/linux-centos8-zen/gcc-8.4.1/cuda-11.8.0-fjdnxm6yggxxp75sb62xrxxmeg4s24ml/bin/nvcc -forward-unknown-to-host-compiler -DTHRUST_DEVICE_SYSTEM=THRUST_DEVICE_SYSTEM_CUDA -DTHRUST_HOST_SYSTEM=THRUST_HOST_SYSTEM_CPP --options-file CMakeFiles/tucker-lib.dir/includes_CUDA.rsp  --extended-lambda -lineinfo -O3 -O3 -DNDEBUG --generate-code=arch=compute_70,code=[compute_70,sm_70] --generate-code=arch=compute_80,code=[compute_80,sm_80] -Wall -Wextra -std=c++17 -x cu -c /users/kszenes/ParTI/tucker-decomp/src/CSFTensor3.cu -o CMakeFiles/tucker-lib.dir/CSFTensor3.cu.o",
+  "file": "/users/kszenes/ParTI/tucker-decomp/src/CSFTensor3.cu"
+},
+{
+  "directory": "/users/kszenes/ParTI/tucker-decomp/Release/src",
+  "command": "/apps/ault/spack/opt/spack/linux-centos8-zen/gcc-8.4.1/cuda-11.8.0-fjdnxm6yggxxp75sb62xrxxmeg4s24ml/bin/nvcc -forward-unknown-to-host-compiler -DTHRUST_DEVICE_SYSTEM=THRUST_DEVICE_SYSTEM_CUDA -DTHRUST_HOST_SYSTEM=THRUST_HOST_SYSTEM_CPP --options-file CMakeFiles/tucker-lib.dir/includes_CUDA.rsp  --extended-lambda -lineinfo -O3 -O3 -DNDEBUG --generate-code=arch=compute_70,code=[compute_70,sm_70] --generate-code=arch=compute_80,code=[compute_80,sm_80] -Wall -Wextra -std=c++17 -x cu -c /users/kszenes/ParTI/tucker-decomp/src/DenseMatrix.cu -o CMakeFiles/tucker-lib.dir/DenseMatrix.cu.o",
+  "file": "/users/kszenes/ParTI/tucker-decomp/src/DenseMatrix.cu"
+},
+{
+  "directory": "/users/kszenes/ParTI/tucker-decomp/Release/src",
+  "command": "/apps/ault/spack/opt/spack/linux-centos8-zen/gcc-8.4.1/cuda-11.8.0-fjdnxm6yggxxp75sb62xrxxmeg4s24ml/bin/nvcc -forward-unknown-to-host-compiler -DTHRUST_DEVICE_SYSTEM=THRUST_DEVICE_SYSTEM_CUDA -DTHRUST_HOST_SYSTEM=THRUST_HOST_SYSTEM_CPP --options-file CMakeFiles/tucker-lib.dir/includes_CUDA.rsp  --extended-lambda -lineinfo -O3 -O3 -DNDEBUG --generate-code=arch=compute_70,code=[compute_70,sm_70] --generate-code=arch=compute_80,code=[compute_80,sm_80] -Wall -Wextra -std=c++17 -x cu -c /users/kszenes/ParTI/tucker-decomp/src/contraction_kernels.cu -o CMakeFiles/tucker-lib.dir/contraction_kernels.cu.o",
+  "file": "/users/kszenes/ParTI/tucker-decomp/src/contraction_kernels.cu"
+},
+{
+  "directory": "/users/kszenes/ParTI/tucker-decomp/Release/src",
+  "command": "/apps/ault/spack/opt/spack/linux-centos8-zen/gcc-8.4.1/cuda-11.8.0-fjdnxm6yggxxp75sb62xrxxmeg4s24ml/bin/nvcc -forward-unknown-to-host-compiler -DTHRUST_DEVICE_SYSTEM=THRUST_DEVICE_SYSTEM_CUDA -DTHRUST_HOST_SYSTEM=THRUST_HOST_SYSTEM_CPP --options-file CMakeFiles/tucker-lib.dir/includes_CUDA.rsp  --extended-lambda -lineinfo -O3 -O3 -DNDEBUG --generate-code=arch=compute_70,code=[compute_70,sm_70] --generate-code=arch=compute_80,code=[compute_80,sm_80] -Wall -Wextra -std=c++17 -x cu -c /users/kszenes/ParTI/tucker-decomp/src/svd.cu -o CMakeFiles/tucker-lib.dir/svd.cu.o",
+  "file": "/users/kszenes/ParTI/tucker-decomp/src/svd.cu"
+},
+{
+  "directory": "/users/kszenes/ParTI/tucker-decomp/Release/src",
+  "command": "/apps/ault/spack/opt/spack/linux-centos8-zen/gcc-8.4.1/cuda-11.8.0-fjdnxm6yggxxp75sb62xrxxmeg4s24ml/bin/nvcc -forward-unknown-to-host-compiler -DTHRUST_DEVICE_SYSTEM=THRUST_DEVICE_SYSTEM_CUDA -DTHRUST_HOST_SYSTEM=THRUST_HOST_SYSTEM_CPP --options-file CMakeFiles/tucker-lib.dir/includes_CUDA.rsp  --extended-lambda -lineinfo -O3 -O3 -DNDEBUG --generate-code=arch=compute_70,code=[compute_70,sm_70] --generate-code=arch=compute_80,code=[compute_80,sm_80] -Wall -Wextra -std=c++17 -x cu -c /users/kszenes/ParTI/tucker-decomp/src/ttm.cu -o CMakeFiles/tucker-lib.dir/ttm.cu.o",
+  "file": "/users/kszenes/ParTI/tucker-decomp/src/ttm.cu"
+},
+{
+  "directory": "/users/kszenes/ParTI/tucker-decomp/Release/src",
+  "command": "/apps/ault/spack/opt/spack/linux-centos8-zen/gcc-8.4.1/cuda-11.8.0-fjdnxm6yggxxp75sb62xrxxmeg4s24ml/bin/nvcc -forward-unknown-to-host-compiler -DTHRUST_DEVICE_SYSTEM=THRUST_DEVICE_SYSTEM_CUDA -DTHRUST_HOST_SYSTEM=THRUST_HOST_SYSTEM_CPP --options-file CMakeFiles/tucker-lib.dir/includes_CUDA.rsp  --extended-lambda -lineinfo -O3 -O3 -DNDEBUG --generate-code=arch=compute_70,code=[compute_70,sm_70] --generate-code=arch=compute_80,code=[compute_80,sm_80] -Wall -Wextra -std=c++17 -x cu -c /users/kszenes/ParTI/tucker-decomp/src/tucker.cu -o CMakeFiles/tucker-lib.dir/tucker.cu.o",
+  "file": "/users/kszenes/ParTI/tucker-decomp/src/tucker.cu"
+}
+]

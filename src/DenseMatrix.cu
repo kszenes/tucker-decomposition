@@ -1,8 +1,9 @@
 #include "DenseMatrix.cuh"
 
 // NOTE: transposes internally matrix
-DenseMatrix::DenseMatrix(const std::string &filename,
-                         const bool is_transposed) {
+DenseMatrix::DenseMatrix(
+    const std::string &filename, const bool is_transposed
+) {
   std::cout << "Reading dense matrix from: " << filename << '\n';
   std::ifstream ifile(filename);
   index_t num_rows = 0, num_cols = 0;
@@ -30,6 +31,7 @@ DenseMatrix::DenseMatrix(const std::string &filename,
   }
 
   h_values.resize(nrows * ncols);
+  d_values.resize(nrows * ncols);
 
   for (unsigned row = 0; row < num_rows; ++row) {
     for (unsigned col = 0; col < num_cols; ++col) {
@@ -51,36 +53,52 @@ DenseMatrix::DenseMatrix(const std::string &filename,
   ifile.close();
 }
 
-DenseMatrix::DenseMatrix(const index_t rows, const index_t cols,
-                         const std::string &method)
+DenseMatrix::DenseMatrix(
+    const index_t rows, const index_t cols, const std::string &method
+)
     : nrows(rows), ncols(cols) {
   h_values.resize(nrows * ncols);
   d_values.resize(nrows * ncols);
   if (method == "random") {
-    std::cout << "Generating random normal matrix: " << rows << " x " << cols
-              << '\n';
+    fmt::print("Generating RANDOM normal matrix: {} x {}\n\n", rows, cols);
     std::random_device rd;
     std::mt19937 mt(rd());
     std::normal_distribution<value_t> dist{0, 1};
     for (auto &e : h_values)
       e = dist(mt);
-
+  } else if (method == "random_seed") {
+    fmt::print(
+        "Generating RANDOM normal matrix with default SEED: {} x {}\n\n", rows,
+        cols
+    );
+    std::mt19937 mt(42);
+    std::normal_distribution<value_t> dist{0, 1};
+    for (auto &e : h_values)
+      e = dist(mt);
   } else if (method == "ones") {
-    std::cout << "Generating matrix of ones: " << rows << " x " << cols;
+    fmt::print(
+        "Generating random normal matrix of ONES: {} x {}\n\n", rows, cols
+    );
     for (auto &e : h_values)
       e = 1.0;
   } else {
-    std::cout << "Generating matrix of zeros: " << rows << " x " << cols;
+    fmt::print(
+        "Generating random normal matrix of ZEROS: {} x {}\n\n", rows, cols
+    );
     for (auto &e : h_values)
       e = 0.0;
   }
 
-  d_values = h_values;
+  to_device();
 }
 
-void DenseMatrix::to_device() { d_values = h_values; }
+void DenseMatrix::to_device() {
+  thrust::copy(h_values.begin(), h_values.end(), d_values.begin());
+}
 
-void DenseMatrix::to_host() { h_values = d_values; }
+void DenseMatrix::to_host() {
+  thrust::copy(d_values.begin(), d_values.end(), h_values.begin());
+}
 
 void DenseMatrix::print(const bool sync) {
   if (sync) {

@@ -15,6 +15,6 @@ inline void gpuAssert(cudaError_t code, const char *file, int line,
 }
 
 using index_t = unsigned;
-using value_t = float;
+using value_t = double;
 
 #endif /* MACROS_H */
