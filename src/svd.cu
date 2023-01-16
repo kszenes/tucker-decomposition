@@ -61,35 +61,25 @@ thrust::host_vector<value_t> call_svd(
 
 void svd(
   const CSFTensor3& csf,
-  const thrust::host_vector<value_t>& sspTensor,
+  thrust::device_vector<value_t>& sspTensor,
   DenseMatrix& U_to_update,
   const index_t subchunk_size
+  const bool on_gpu
 ) {
-  auto svd_nrows = U_to_update.nrows;
-  thrust::host_vector<value_t> densified(svd_nrows * subchunk_size);
+  thrust::host_vector<value_t> h_sspTensor(sspTensor); 
   thrust::host_vector<index_t> last_mode(csf.fidx[0]);
 
-  // fmt::print("subchunk_size = {}; last_mode: {}\n", subchunk_size, last_mode);
-  // Densify matrix: TODO: could use memcpy
-  for (unsigned row = 0; row < last_mode.size(); ++row) {
-    for (unsigned col = 0; col < subchunk_size; ++col) {
-      densified[last_mode[row] * subchunk_size + col] =
-          sspTensor[row * subchunk_size + col];
-    }
-  }
-
-  // fmt::print("sspTensor = {}\n", sspTensor);
-  // fmt::print("densified = {}\n", densified);
-
   thrust::host_vector<value_t> Usvd =
-      call_svd(densified, svd_nrows, subchunk_size, true);
+      call_svd(h_sspTensor, last_mode.size(), subchunk_size, true);
 
-  // fmt::print("Usvd = {}\n", Usvd);
+  // TODO: Fill with zeros needed since values non zero at the beginning
+  // FIX:  Initialize appropriate rows to zero
+  thrust::fill(U_to_update.h_values.begin(), U_to_update.h_values.end(), 0);
 
-  // copy svd result to factor_matrix
-  for (unsigned col = 0; col < U_to_update.ncols; col++) {
-    for (unsigned row = 0; row < U_to_update.nrows; row++) {
-      U_to_update.h_values[row * U_to_update.ncols + col] = Usvd[row * svd_nrows + col];
+  
+  for (unsigned row = 0; row < last_mode.size(); row++) {
+    for (unsigned col = 0; col < U_to_update.ncols; col++) {
+      U_to_update.h_values[last_mode[row] * U_to_update.ncols + col] = Usvd[row * last_mode.size() + col];
     }
   }
   U_to_update.to_device();

@@ -9,23 +9,17 @@
 #include <memory>
 #include <mkl_lapacke.h>
 #include <string>
+#include "parse_args.hpp"
 
-int main() {
-  // TODO: Bug with sparse_tiny.tns
+
+
+int main(int argc, char* argv[]) {
+  const auto [filename, matrixSizes] = parse_args(argc, argv);
+
   COOTensor3 X(
-    "/users/kszenes/ParTI/tucker-decomp/example_tensors/sparse_100_50.tns",
+    filename,
     true
   );
 
-  // std::vector<index_t> sizes = {30, 25, 20, 15, 10, 5, 2};
-  // for (const auto e : sizes) {
-  //   std::vector<index_t> matrixSizes{e, e, e};
-  //   fmt::print("MatrixSizes: {}\n", matrixSizes);
-  //   tucker_decomp(X, matrixSizes);
-  // }
-
-  const index_t rank = 16;
-  std::vector<index_t> matrixSizes{rank, rank, rank};
   tucker_decomp(X, matrixSizes);
-
 }

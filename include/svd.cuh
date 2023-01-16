@@ -15,9 +15,10 @@ thrust::host_vector<value_t> call_svd(
 
 void svd(
   const CSFTensor3& csf,
-  const thrust::host_vector<value_t>& sspTensor,
+  thrust::device_vector<value_t>& sspTensor,
   DenseMatrix& U_to_update,
-  const index_t subchunkSize
+  const index_t subchunkSize,
+  const bool on_gpu
 );
 
 #endif /* SVD_H */

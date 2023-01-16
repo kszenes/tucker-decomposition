@@ -11,7 +11,6 @@ void tucker_decomp(COOTensor3 &X, const std::vector<index_t> &ranks) {
   // Core tensor size
   auto coreSize = std::accumulate(
     ranks.begin(), ranks.end(), 1, std::multiplies{});
-  fmt::print("coreSize = {}\n", coreSize);
   // Sorting Xs
   std::vector<CSFTensor3> CSFTensors;
   CSFTensors.reserve(X.nmodes);
@@ -23,7 +22,7 @@ void tucker_decomp(COOTensor3 &X, const std::vector<index_t> &ranks) {
   for (unsigned mode = 0; mode < X.nmodes; ++mode) {
     CSFTensors.emplace_back(X, mode);
     // CSFTensors[mode].print();
-    factor_matrices.emplace_back(X.shape[mode], ranks[mode], "random");
+    factor_matrices.emplace_back(X.shape[mode], ranks[mode], "random_seed");
     // factor_matrices.emplace_back("/users/kszenes/ParTI/tucker-decomp/example_tensors/dense_5_5.tns", true);
     // factor_matrices.emplace_back("/users/kszenes/ParTI/tucker-decomp/example_tensors/dense_5_2.tns", true);
     // factor_matrices[mode].print();
