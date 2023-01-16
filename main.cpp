@@ -12,43 +12,20 @@
 
 int main() {
   // TODO: Bug with sparse_tiny.tns
-  COOTensor3 X("/users/kszenes/ParTI/tucker-decomp/example_tensors/sparse_5_5_5.tns", true);
- // X.print();
+  COOTensor3 X(
+    "/users/kszenes/ParTI/tucker-decomp/example_tensors/sparse_100_50.tns",
+    true
+  );
 
-  // fmt::print("Indices:\n[");
-  // fmt::print("{},", X.h_modes[0]);
-  // fmt::print("{},", X.h_modes[1]);
-  // fmt::print("{}]\n\n", X.h_modes[2]);
-  // fmt::print("Values: {}\n\n", X.h_values);
+  // std::vector<index_t> sizes = {30, 25, 20, 15, 10, 5, 2};
+  // for (const auto e : sizes) {
+  //   std::vector<index_t> matrixSizes{e, e, e};
+  //   fmt::print("MatrixSizes: {}\n", matrixSizes);
+  //   tucker_decomp(X, matrixSizes);
+  // }
 
-  // CSFTensor3 csf(X, 0);
-  // csf.print();
-
-  // index_t colsU = 3;
-  // DenseMatrix U(csf.shape.back(), colsU, "random_seed");
-  // U.print();
-  // fmt::print("U = {}\n", U.h_values);
-
-  // auto out_tensor = thrust::host_vector<value_t>(contract_first_mode(csf, U));
-  // fmt::print("out = {}\n", out_tensor);
-
-  std::vector<index_t> matrixSizes{5, 5, 5};
-
-
-
-  fmt::print("MatrixSizes: {}\n", matrixSizes);
+  const index_t rank = 16;
+  std::vector<index_t> matrixSizes{rank, rank, rank};
   tucker_decomp(X, matrixSizes);
 
-  // csf.buildCSFTensor3(X.d_modes, X.d_values);
-  // std::cout << "Done\n";
-
-  // DenseMatrix U(5, 2, "ones");
-  // U.print();
-
-  // SparseTensor2 Y(X.shape, 2, U.ncols);
-  // std::cout << "Y.CHUNK_SIZE := " << Y.chunk_size << '\n';
-  // tensor_times_matrix(Y, X, U, 2, true);
-  // std::cout << "Y.CHUNK_SIZE := " << Y.chunk_size << '\n';
-
-  // tensor_times_matrix(Y, U);
 }

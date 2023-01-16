@@ -75,10 +75,11 @@ thrust::device_vector<value_t> contract_second_mode(
   size_t out_chunk_size = matrix.ncols * subchunk_size;
   // fmt::print("\nnum_chunks = {}; chunk_size = {}; matrix.ncols = {}; subchunk_size = {}\n", out_num_chunks, out_chunk_size, matrix.ncols, subchunk_size);
   thrust::device_vector<value_t> out_values(out_num_chunks * out_chunk_size);
-  auto threads = dim3(8, 32);
+  auto threads = dim3(matrix.ncols, 1024 / matrix.ncols);
   auto grid = dim3(
-      (subchunk_size + threads.x - 1) / threads.x,
-      (out_num_chunks + threads.y - 1) / threads.y
+    out_num_chunks
+    // (subchunk_size + threads.x - 1) / threads.x,
+    // (out_num_chunks + threads.y - 1) / threads.y
   );
 
   GPUTimer timer;
@@ -114,10 +115,11 @@ thrust::device_vector<value_t> contract_last_mode(
   size_t out_chunk_size = matrix.ncols * subchunk_size;
   // fmt::print("\nnum_chunks = {}; chunk_size = {}; matrix.ncols = {}; subchunk_size = {}\n", out_num_chunks, out_chunk_size, matrix.ncols, subchunk_size);
   thrust::device_vector<value_t> out_values(out_num_chunks * out_chunk_size);
-  auto threads = dim3(8, 32);
+  auto threads = dim3(matrix.ncols, 1024 / matrix.ncols);
   auto grid = dim3(
-      (subchunk_size + threads.x - 1) / threads.x,
-      (out_num_chunks + threads.y - 1) / threads.y
+    out_num_chunks
+    // (subchunk_size + threads.x - 1) / threads.x,
+    // (out_num_chunks + threads.y - 1) / threads.y
   );
 
   GPUTimer timer;
@@ -138,8 +140,8 @@ thrust::device_vector<value_t> contract_last_mode(
   );
   auto time = timer.seconds();
   fmt::print(
-      "Last_contraction<<<({}, {}),({}, {})>>>:\n  executed in {} [s]\n", grid.x,
-      grid.y, threads.x, threads.y, time
+      "Last_contraction<<<({},({}, {})>>>:\n  executed in {} [s]\n", grid.x,
+      threads.x, threads.y, time
   );
   cudaError_t err = cudaGetLastError();
   if (err != cudaSuccess)

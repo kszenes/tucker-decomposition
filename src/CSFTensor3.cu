@@ -19,25 +19,25 @@ CSFTensor3::CSFTensor3(const COOTensor3 &coo_tensor, const int &mode)
   std::iota(cyclic_permutation.begin(), cyclic_permutation.end(), 0);
   // permute
   // TODO: Make general
-  if (mode == 0) {
-    std::swap(cyclic_permutation[1], cyclic_permutation[2]);
-    std::swap(shape[1], shape[2]);
-  }
-  else if (mode == 1) {
-    std::rotate(
-      cyclic_permutation.begin(),
-      cyclic_permutation.begin() + mode,
-      cyclic_permutation.end());
-    std::rotate(shape.begin(), shape.begin() + mode, shape.end());
-  } else if (mode == 2) {
-    std::swap(cyclic_permutation[0], cyclic_permutation[mode]);
-    std::swap(shape[0], shape[mode]);
-  }
-  // std::rotate(
-  //   cyclic_permutation.begin(),
-  //   cyclic_permutation.begin() + mode,
-  //   cyclic_permutation.end());
-  // std::rotate(shape.begin(), shape.begin() + mode, shape.end());
+  // if (mode == 0) {
+  //   std::swap(cyclic_permutation[1], cyclic_permutation[2]);
+  //   std::swap(shape[1], shape[2]);
+  // }
+  // else if (mode == 1) {
+  //   std::rotate(
+  //     cyclic_permutation.begin(),
+  //     cyclic_permutation.begin() + mode,
+  //     cyclic_permutation.end());
+  //   std::rotate(shape.begin(), shape.begin() + mode, shape.end());
+  // } else if (mode == 2) {
+  //   std::swap(cyclic_permutation[0], cyclic_permutation[mode]);
+  //   std::swap(shape[0], shape[mode]);
+  // }
+  std::rotate(
+    cyclic_permutation.begin(),
+    cyclic_permutation.begin() + mode,
+    cyclic_permutation.end());
+  std::rotate(shape.begin(), shape.begin() + mode, shape.end());
   
   fptr.resize(nmodes - 1);
   fidx.resize(nmodes);

@@ -54,7 +54,7 @@ thrust_create_target(Thrust)
 
 enable_testing()
 
-# add_subdirectory(tests)
+add_subdirectory(tests)
 add_subdirectory(src)
 
 add_executable(tucker main.cpp)

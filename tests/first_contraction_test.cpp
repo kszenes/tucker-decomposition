@@ -11,7 +11,7 @@
 TEST(TensorContraction, FirstContraction) {
   // TODO: Use Random Tensor
   std::string filename{"/users/kszenes/ParTI/tucker-decomp/example_tensors/sparse_5_5_5.tns"};
-  const std::vector<index_t> colsU{4, 3, 2};
+  const std::vector<index_t> colsU{2, 2, 2};
 
   COOTensor3 X(filename, true);
   // X.print();
@@ -108,6 +108,7 @@ TEST(TensorContraction, FirstContraction) {
       }
     };
     fmt::print("second_contraction_dense =\n{}\n", second_contraction_dense);
+    fmt::print("host_reference_second =\n{}\n", host_reference_second);
     for (index_t i = 0; i < second_contraction_dense.size(); ++i) {
       ASSERT_NEAR(second_contraction_dense[i], host_reference_second[i], 1e-6) << 
         fmt::format("Failed for 2nd contraction mode {} at index {}\n", csf.cyclic_permutation[1], i);
@@ -118,7 +119,7 @@ TEST(TensorContraction, FirstContraction) {
     fmt::print("thirdMatrix: size = {}; vals = {}\n", thirdMatrix.h_values.size(), thirdMatrix.h_values);
     fmt::print("penultimateTensor: size = {}; vals = {}\n", penultimateTensor.size(), penultimateTensor);
     auto coreTensor = thrust::host_vector<value_t>(
-      contract_last_mode(csf, thirdMatrix, penultimateTensor, firstMatrix.ncols * secondMatrix.ncols)
+      contract_last_mode(csf, matrices, penultimateTensor, firstMatrix.ncols * secondMatrix.ncols)
     );
     // fmt::print("coreTensor (gpu) = {}\n", coreTensor);
     

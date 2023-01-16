@@ -82,6 +82,34 @@ __global__ void spt_TTMRankRBNnzKernelSM(
 }
 
 // TODO: verify unsure of result!!
+// __global__ void ttm_semisparse_kernel(
+//     const index_t *__restrict__ fiber_ptr,
+//     const index_t *__restrict__ X_indices_m, const index_t nrows,
+//     const index_t ncols, const index_t out_num_chunks,
+//     const index_t out_chunk_size, const index_t X_chunk_size,
+//     value_t *__restrict__ out_values, const value_t *__restrict__ X_values,
+//     const value_t *__restrict__ U_values
+// ) {
+
+//   for (int cur_chunk = threadIdx.x + blockIdx.x * blockDim.x;
+//        cur_chunk < X_chunk_size; cur_chunk += blockDim.x * gridDim.x) {
+//     for (int nnz_element = threadIdx.y + blockIdx.y * blockDim.y;
+//          nnz_element < out_num_chunks; nnz_element += gridDim.y) {
+//       int fiber_begin = fiber_ptr[nnz_element];
+//       int fiber_end = fiber_ptr[nnz_element + 1];
+//       for (int fiber_idx = fiber_begin; fiber_idx < fiber_end; ++fiber_idx) {
+//         int row = X_indices_m[fiber_idx];
+//         int chunk_start = fiber_idx * X_chunk_size;
+//         for (int col = 0; col < ncols; ++col) {
+//           out_values
+//               [nnz_element * out_chunk_size + col * X_chunk_size + cur_chunk] +=
+//               X_values[chunk_start + cur_chunk] * U_values[row * ncols + col];
+//         }
+//       }
+//     }
+//   }
+// }
+
 __global__ void ttm_semisparse_kernel(
     const index_t *__restrict__ fiber_ptr,
     const index_t *__restrict__ X_indices_m, const index_t nrows,
@@ -90,24 +118,20 @@ __global__ void ttm_semisparse_kernel(
     value_t *__restrict__ out_values, const value_t *__restrict__ X_values,
     const value_t *__restrict__ U_values
 ) {
-
-  for (int cur_chunk = threadIdx.x + blockIdx.x * blockDim.x;
-       cur_chunk < X_chunk_size; cur_chunk += blockDim.x * blockDim.y) {
-    for (int nnz_element = threadIdx.y + blockIdx.y * blockDim.y;
-         nnz_element < out_num_chunks; nnz_element += blockDim.x * blockDim.y) {
-      int fiber_begin = fiber_ptr[nnz_element];
-      int fiber_end = fiber_ptr[nnz_element + 1];
-      for (int fiber_idx = fiber_begin; fiber_idx < fiber_end; ++fiber_idx) {
-        int row = X_indices_m[fiber_idx];
-        int chunk_start = fiber_idx * X_chunk_size;
-        for (int col = 0; col < ncols; ++col) {
-          out_values
-              [nnz_element * out_chunk_size + col * X_chunk_size + cur_chunk] +=
-              X_values[chunk_start + cur_chunk] * U_values[row * ncols + col];
+    size_t i = blockIdx.x;             // i := mode-n fiber
+    size_t inz_begin = fiber_ptr[i];    // inz_begin/end := global indices for monde-n fiber of X
+    size_t inz_end = fiber_ptr[i + 1];
+    size_t r = threadIdx.x;
+    for(size_t k = threadIdx.y; k < X_chunk_size; k += blockDim.y) {
+        value_t accumulate = 0;
+        for(size_t j = inz_begin; j < inz_end; ++j) { // loop over fiber i
+            size_t c = X_indices_m[j]; // get mode-n index of X: c ∈ [1, size(mode-n)]
+            if(c < nrows && r < ncols) {
+                accumulate += X_values[j * X_chunk_size + k] * U_values[c * ncols + r];
+            }
         }
-      }
+        out_values[i * out_chunk_size + r * X_chunk_size + k] += accumulate;
     }
-  }
 }
 
 // __global__ void ttm_last_kernel(
