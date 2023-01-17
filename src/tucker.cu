@@ -72,6 +72,7 @@ void tucker_decomp(COOTensor3 &X, const std::vector<index_t> &ranks) {
     fmt::print("\n=== Iteration {} ===\n\n", iter);
     thrust::device_vector<value_t> sspTensor;
     for (unsigned mode_it = 0; mode_it < X.nmodes; ++mode_it) {
+      // BUG: This offset is actually needed!
       auto mode = (mode_it + 1) % X.nmodes;
       fmt::print("\n--- TTM chain for mode {} ---\n\n", mode);
       // CSFTensors[mode].print();
@@ -79,10 +80,11 @@ void tucker_decomp(COOTensor3 &X, const std::vector<index_t> &ranks) {
       // fmt::print("Contraction 1: sspTensor = {}\n", sspTensor);
       subchunk_size = coreSize / factor_matrices[CSFTensors[mode].cyclic_permutation.front()].ncols;
 
+      auto use_gpu = true;
       svd(
         CSFTensors[mode], sspTensor,
         factor_matrices[CSFTensors[mode].cyclic_permutation.front()],
-        subchunk_size
+        subchunk_size, use_gpu
       );
       // fmt::print("U = {}\n", factor_matrices[CSFTensors[mode].cyclic_permutation.front()].d_values);
       // CSFTensors[mode].print();

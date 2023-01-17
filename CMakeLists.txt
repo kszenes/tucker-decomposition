@@ -52,6 +52,8 @@ message(STATUS "${MKL_IMPORTED_TARGETS}")
 find_package(Thrust REQUIRED CONFIG)
 thrust_create_target(Thrust)
 
+find_package(CUDAToolkit)
+
 enable_testing()
 
 add_subdirectory(tests)
