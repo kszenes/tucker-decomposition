@@ -11,6 +11,7 @@
 #include "DenseMatrix.cuh"
 #include "svd.cuh"
 #include "ttm.cuh"
+#include "numpy_verify.cuh"
 
 void tucker_decomp(COOTensor3 &X, const std::vector<index_t> &ranks);
 

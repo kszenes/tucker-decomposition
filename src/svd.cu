@@ -67,7 +67,7 @@ thrust::device_vector<value_t> call_svd(
 ) {
     int lwork = 0;
     double *d_work = nullptr;
-    double *d_rwork = nullptr;
+    double *d_rwork = new double[std::min(svd_rows, svd_cols) - 1];
     int *devInfo = nullptr;
     CUDA_CHECK(cusolverDnDgesvd_bufferSize(cusolverH, svd_cols, svd_rows, &lwork));
     // NOTE: in order to compute U using row major, compute V instead!
@@ -75,6 +75,7 @@ thrust::device_vector<value_t> call_svd(
     CUDA_CHECK(cudaMalloc(reinterpret_cast<void **>(&devInfo), sizeof(int)));
     // TODO: One of the copies is superfluous if jobvt set to 'S'
     thrust::device_vector<double> Usvd(svd_rows * svd_rows); // Actually V
+    thrust::device_vector<double> Vsvd(svd_cols * svd_cols); // Actually U
     thrust::device_vector<double> S(std::min(svd_rows, svd_cols));
     thrust::device_vector<double> ssp_copy(sspTensor);
 
@@ -82,16 +83,37 @@ thrust::device_vector<value_t> call_svd(
     signed char jobvt = 'A';
     GPUTimer timer;
     timer.start();
-    CUDA_CHECK(cusolverDnDgesvd(
+    fmt::print("m = {}\n", svd_cols);
+    fmt::print("n = {}\n", svd_rows);
+    fmt::print("lda = {}\n", svd_cols);
+    fmt::print("ldu = {}\n", svd_cols);
+    fmt::print("ldvT = {}\n", svd_rows);
+    // CUDA_CHECK(cusolverDnDgesvd(
+    //   cusolverH, jobu, jobvt, svd_cols, svd_rows,
+    //   CAST_THRUST(ssp_copy.data()), svd_cols,
+    //   CAST_THRUST(S.data()),
+    //   CAST_THRUST(Vsvd.data()), svd_cols, 
+    //   CAST_THRUST(Usvd.data()), svd_rows,
+    //   d_work, lwork, d_rwork, devInfo));
+    auto code = cusolverDnDgesvd(
       cusolverH, jobu, jobvt, svd_cols, svd_rows,
       CAST_THRUST(ssp_copy.data()), svd_cols,
-      CAST_THRUST(S.data()), nullptr, 1,
-      CAST_THRUST(Usvd.data()), svd_rows, d_work, lwork, d_rwork, devInfo));
+      CAST_THRUST(S.data()),
+      CAST_THRUST(Vsvd.data()), svd_cols, 
+      CAST_THRUST(Usvd.data()), svd_rows,
+      d_work, lwork, d_rwork, devInfo);
+    fmt::print("devInfo = {}\n", *devInfo);
+    // if (code != CUSOLVER_STATUS_SUCCESS) {
+    //   fmt::print("cuSOLVER error #{} with devInfo: {}\n", code, *devInfo);
+    //   exit(1);
+    // }
+
     auto time = timer.seconds();
     fmt::print("cuSOLVER SVD exectued in {} [s]\n", time);
 
     CUDA_CHECK(cudaFree(devInfo));
     CUDA_CHECK(cudaFree(d_work));
+    delete[] d_rwork;
     return Usvd;
 }
 thrust::device_vector<value_t> call_svdj(
@@ -133,7 +155,6 @@ thrust::device_vector<value_t> call_svdj(
     std::printf("max. sweeps = %d, default value is 100\n", max_sweeps);
     std::printf("econ = %d \n", econ);
 
-
     /* step 4: query working space of SVD */
     CUDA_CHECK(cusolverDnDgesvdj_bufferSize(
         cusolverH, jobz, econ, svd_cols, svd_rows,        
@@ -158,6 +179,11 @@ thrust::device_vector<value_t> call_svdj(
     auto time = timer.seconds();
     fmt::print("cuSOLVER SVD exectued in {} [s]\n", time);
 
+    CUDA_CHECK(cusolverDnXgesvdjGetSweeps(cusolverH, gesvdj_params, &executed_sweeps));
+    CUDA_CHECK(cusolverDnXgesvdjGetResidual(cusolverH, gesvdj_params, &residual));
+    std::printf("residual |A - U*S*V**H|_F = %E \n", residual);
+    std::printf("number of executed sweeps = %d \n", executed_sweeps);
+
     CUDA_CHECK(cudaFree(devInfo));
     CUDA_CHECK(cudaFree(d_work));
     return Usvd;
@@ -179,6 +205,7 @@ void svd(
     CUDA_CHECK(cusolverDnCreate(&cusolverH));
     const auto Usvd = call_svdj(cusolverH, sspTensor, svd_rows, svd_cols);
 
+    // TODO: Remove fill
     thrust::fill(U_to_update.d_values.begin(), U_to_update.d_values.end(), 0);
     for (unsigned row = 0; row < svd_rows; row++) {
       auto offset_it = Usvd.begin() + (row * last_mode.size());

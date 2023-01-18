@@ -3,3 +3,4 @@ example_tensors
 .vscode
 .cache
 out.txt
+verify.py
