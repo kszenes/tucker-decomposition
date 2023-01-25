@@ -8,6 +8,17 @@ void copy_thrust(
   thrust::copy(src.begin(), src.end(), dest.begin());
 }
 
+template <typename T, size_t... Indices>
+auto gen_tuple_impl(std::vector<T>& v, std::index_sequence<Indices...> ) {
+    return thrust::make_tuple(std::begin(v[Indices])...);
+}
+
+template <size_t N, typename T>
+auto gen_begin_tuple(std::vector<T>& v) {
+    assert(std::size(v) >= N);
+    return gen_tuple_impl(v, std::make_index_sequence<N>{});
+}
+
 CSFTensor3::CSFTensor3(const COOTensor3 &coo_tensor, const int &mode)
 :  nmodes(coo_tensor.d_modes.size()), nnz(coo_tensor.d_values.size()),
    shape(coo_tensor.shape)
@@ -60,20 +71,16 @@ void CSFTensor3::buildCSFTensor3(
 ) {
   auto nmodes = coo_modes.size();
 
-  auto zip_it_3d = thrust::make_zip_iterator(thrust::make_tuple(
-      coo_modes[0].begin(), coo_modes[1].begin(), coo_modes[2].begin()
-  ));
+  auto zip_it_3d = thrust::make_zip_iterator(gen_begin_tuple<3>(coo_modes));
 
   // Sort along 0th mode
   thrust::sort_by_key(
-      zip_it_3d, zip_it_3d + nnz, d_values.begin()
+      zip_it_3d, zip_it_3d + nnz, std::begin(d_values)
   );
   // Set first fiber idx
   copy_thrust(fidx[2], coo_modes[2]);
 
-  auto zip2d_in = thrust::make_zip_iterator(
-      thrust::make_tuple(coo_modes[0].begin(), coo_modes[1].begin())
-  );
+  auto zip2d_in = thrust::make_zip_iterator(gen_begin_tuple<2>(coo_modes));
 
   // fmt::print("First compression:\n{}\n{}\n", coo_modes[0], coo_modes[1]);
   // First compression

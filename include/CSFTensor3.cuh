@@ -8,13 +8,6 @@
 
 class CSFTensor3 {
 public:
-  // using IndexTuple3D = thrust::tuple<index_t, index_t, index_t>;
-  // using IndexTuple2D = thrust::tuple<index_t, index_t>;
-  // using IntIterator = thrust::device_vector<index_t>::iterator;
-  // using IteratorTuple = thrust::tuple<IntIterator, IntIterator, IntIterator>;
-  // using ZipIterator = thrust::zip_iterator<IteratorTuple>;
-
-  // ZipIterator d_zip_it;
   explicit CSFTensor3(const COOTensor3& coo_tensor, const int& mode);
 
   void buildCSFTensor3(
