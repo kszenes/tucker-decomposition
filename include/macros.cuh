@@ -2,6 +2,7 @@
 #define MACROS_H
 
 #include <cusolverDn.h>
+#include <helper_cuda.cuh>
 
 #define CAST_THRUST(x) thrust::raw_pointer_cast(x)
 #define CUDA_CHECK(ans)                                                        \
@@ -19,22 +20,22 @@ inline void gpuAssert(cudaError_t code, const char *file, int line,
 inline void gpuAssert(cusolverStatus_t code, const char *file, int line,
                       bool abort = true) {
   if (code != CUSOLVER_STATUS_SUCCESS) {
-    fprintf(stderr, "cuSOLVER ERROR: %d %s %d\n", code, file,
+    fprintf(stderr, "cuSOLVER ERROR: %s %s %d\n", _cudaGetErrorEnum(code), file,
             line);
     if (abort)
       exit(code);
   }
 }
 
-// inline void gpuAssert(cublasStatus_t code, const char *file, int line,
-//                       bool abort = true) {
-//   if (code != CUBLAS_STATUS_SUCCESS) {
-//     fprintf(stderr, "GPUassert: %s %s %d\n", err, file,
-//             line);
-//     if (abort)
-//       exit(code);
-//   }
-// }
+inline void gpuAssert(cublasStatus_t code, const char *file, int line,
+                      bool abort = true) {
+  if (code != CUBLAS_STATUS_SUCCESS) {
+    fprintf(stderr, "cuBLAS error: %s %s %d\n", _cudaGetErrorEnum(code), file,
+            line);
+    if (abort)
+      exit(code);
+  }
+}
 
 using index_t = unsigned;
 using value_t = double;
