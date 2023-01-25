@@ -1,5 +1,25 @@
 #include "svd.cuh"
 
+thrust::device_vector<value_t> transpose_matrix(
+  const cublasHandle_t& cublasH,
+  const thrust::device_vector<value_t>& matrix,
+  const int ldm
+) {
+  const double alpha = 1.0;
+  const double beta = 0.0;
+  const int ldc = matrix.size() / ldm;
+
+  thrust::device_vector<value_t> matrix_T(matrix.size());
+  CUDA_CHECK(cublasDgeam(
+    cublasH, CUBLAS_OP_T, CUBLAS_OP_N,
+    ldc, ldm, &alpha,
+    CAST_THRUST(matrix.data()), ldm,
+    &beta, nullptr, ldc,
+    CAST_THRUST(matrix_T.data()), ldc
+  ));
+  return matrix_T;
+}
+
 thrust::host_vector<value_t> call_svd(
     thrust::host_vector<value_t> &matrix, const size_t nrows,
     const size_t ncols, const bool only_U
@@ -60,6 +80,7 @@ thrust::host_vector<value_t> call_svd(
 }
 
 thrust::device_vector<value_t> call_svd(
+    const cublasHandle_t& cublasH,
     const cusolverDnHandle_t& cusolverH,
     thrust::device_vector<value_t> &sspTensor,
     const size_t svd_rows,
@@ -69,40 +90,51 @@ thrust::device_vector<value_t> call_svd(
     double *d_work = nullptr;
     double *d_rwork = new double[std::min(svd_rows, svd_cols) - 1];
     int *devInfo = nullptr;
-    CUDA_CHECK(cusolverDnDgesvd_bufferSize(cusolverH, svd_cols, svd_rows, &lwork));
+    signed char jobu = 'N';
+    signed char jobvt = 'O';
+    thrust::device_vector<double> ssp_copy;;
+    thrust::device_vector<double> S(std::min(svd_rows, svd_cols));
+    size_t m = 0, n = 0;
+
+    const bool need_transpose = svd_cols < svd_rows;
+    if (need_transpose) {
+      fmt::print("TRANSPOSING MATRIX\n");
+      jobu = 'O';
+      jobvt = 'N';
+      ssp_copy = transpose_matrix(cublasH, sspTensor, svd_cols);
+      m = svd_rows;
+      n = svd_cols;
+
+    } else {
+      jobu = 'N';
+      jobvt = 'O';
+      ssp_copy.resize(sspTensor.size());
+      thrust::copy(sspTensor.begin(), sspTensor.end(), ssp_copy.begin());
+      m = svd_cols;
+      n = svd_rows;
+    }
+
+    CUDA_CHECK(cusolverDnDgesvd_bufferSize(cusolverH, m, n, &lwork));
     // NOTE: in order to compute U using row major, compute V instead!
     CUDA_CHECK(cudaMalloc(reinterpret_cast<void **>(&d_work), sizeof(double) * lwork));
     CUDA_CHECK(cudaMalloc(reinterpret_cast<void **>(&devInfo), sizeof(int)));
-    // TODO: One of the copies is superfluous if jobvt set to 'S'
-    thrust::device_vector<double> Usvd(svd_rows * svd_rows); // Actually V
-    thrust::device_vector<double> Vsvd(svd_cols * svd_cols); // Actually U
-    thrust::device_vector<double> S(std::min(svd_rows, svd_cols));
-    thrust::device_vector<double> ssp_copy(sspTensor);
 
-    signed char jobu = 'N';
-    signed char jobvt = 'A';
+
     GPUTimer timer;
     timer.start();
-    fmt::print("m = {}\n", svd_cols);
-    fmt::print("n = {}\n", svd_rows);
-    fmt::print("lda = {}\n", svd_cols);
-    fmt::print("ldu = {}\n", svd_cols);
-    fmt::print("ldvT = {}\n", svd_rows);
-    // CUDA_CHECK(cusolverDnDgesvd(
-    //   cusolverH, jobu, jobvt, svd_cols, svd_rows,
-    //   CAST_THRUST(ssp_copy.data()), svd_cols,
-    //   CAST_THRUST(S.data()),
-    //   CAST_THRUST(Vsvd.data()), svd_cols, 
-    //   CAST_THRUST(Usvd.data()), svd_rows,
-    //   d_work, lwork, d_rwork, devInfo));
-    auto code = cusolverDnDgesvd(
-      cusolverH, jobu, jobvt, svd_cols, svd_rows,
-      CAST_THRUST(ssp_copy.data()), svd_cols,
+    fmt::print("m = {}\n", m);
+    fmt::print("n = {}\n", n);
+    fmt::print("lda = {}\n", m);
+    fmt::print("ldu = {}\n", m);
+    fmt::print("ldvT = {}\n", n);
+    CUDA_CHECK(cusolverDnDgesvd(
+      cusolverH, jobu, jobvt, m, n,
+      CAST_THRUST(ssp_copy.data()), m,
       CAST_THRUST(S.data()),
-      CAST_THRUST(Vsvd.data()), svd_cols, 
-      CAST_THRUST(Usvd.data()), svd_rows,
-      d_work, lwork, d_rwork, devInfo);
-    fmt::print("devInfo = {}\n", *devInfo);
+      nullptr, m, 
+      nullptr, n,
+      d_work, lwork, d_rwork, devInfo));
+    // fmt::print("devInfo = {}\n", *devInfo);
     // if (code != CUSOLVER_STATUS_SUCCESS) {
     //   fmt::print("cuSOLVER error #{} with devInfo: {}\n", code, *devInfo);
     //   exit(1);
@@ -114,7 +146,7 @@ thrust::device_vector<value_t> call_svd(
     CUDA_CHECK(cudaFree(devInfo));
     CUDA_CHECK(cudaFree(d_work));
     delete[] d_rwork;
-    return Usvd;
+    return need_transpose ? transpose_matrix(cublasH, ssp_copy, svd_rows) : ssp_copy;
 }
 thrust::device_vector<value_t> call_svdj(
     const cusolverDnHandle_t& cusolverH,
@@ -202,18 +234,24 @@ void svd(
   thrust::host_vector<index_t> last_mode(csf.fidx[0]);
   if (on_gpu) {
     cusolverDnHandle_t cusolverH;
+    cublasHandle_t cublasH;
+    CUDA_CHECK(cublasCreate(&cublasH));
     CUDA_CHECK(cusolverDnCreate(&cusolverH));
-    const auto Usvd = call_svdj(cusolverH, sspTensor, svd_rows, svd_cols);
 
-    // TODO: Remove fill
+    // fmt::print("\nsspTensor = {}\n", sspTensor);
+    const auto Usvd = call_svd(cublasH, cusolverH, sspTensor, svd_rows, svd_cols);
+    // const auto Usvd = call_svdj(cusolverH, sspTensor, svd_rows, svd_cols);
+
+    // TODO: Remove fill, only needed for tensors with 0 fibers
     thrust::fill(U_to_update.d_values.begin(), U_to_update.d_values.end(), 0);
     for (unsigned row = 0; row < svd_rows; row++) {
-      auto offset_it = Usvd.begin() + (row * last_mode.size());
+      auto offset_it = Usvd.begin() + row * svd_cols;
       thrust::copy(offset_it, offset_it + U_to_update.ncols,
                    U_to_update.d_values.begin() + (last_mode[row] * U_to_update.ncols));
     }
-    // fmt::print("To update = {}\n", U_to_update.d_values);
-    CUDA_CHECK(cusolverDnDestroy(cusolverH))
+    // fmt::print("\nu_update = {}\n", U_to_update.d_values);
+    CUDA_CHECK(cusolverDnDestroy(cusolverH));
+    CUDA_CHECK(cublasDestroy(cublasH));
   } else {
     thrust::host_vector<value_t> h_sspTensor(sspTensor); 
     thrust::host_vector<value_t> Usvd =

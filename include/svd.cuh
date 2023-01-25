@@ -7,6 +7,7 @@
 
 #include <mkl_lapacke.h>
 #include <cusolverDn.h>
+#include <cublas_v2.h>
 
 thrust::host_vector<value_t> call_svd(
     thrust::host_vector<value_t> &matrix, const size_t nrows,

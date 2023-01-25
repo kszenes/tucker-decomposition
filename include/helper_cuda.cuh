@@ -34,9 +34,9 @@ static const char *_cudaGetErrorEnum(cublasStatus_t error) {
 
     case CUBLAS_STATUS_LICENSE_ERROR:
       return "CUBLAS_STATUS_LICENSE_ERROR";
+    default:
+      return "<unknown>";
   }
-
-  return "<unknown>";
 }
 
 #ifdef CUSOLVER_COMMON_H_
@@ -67,9 +67,10 @@ static const char *_cudaGetErrorEnum(cusolverStatus_t error) {
       return "CUSOLVER_STATUS_ZERO_PIVOT";
     case CUSOLVER_STATUS_INVALID_LICENSE:
       return "CUSOLVER_STATUS_INVALID_LICENSE";
+    default:
+      return "<unknown>";
   }
 
-  return "<unknown>";
 }
 #endif
 #endif

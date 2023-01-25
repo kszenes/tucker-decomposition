@@ -62,7 +62,7 @@ void tucker_decomp(COOTensor3 &X, const std::vector<index_t> &ranks) {
   auto fitold = 0.0;
   auto fit = 0.0;
   auto subchunk_size = coreSize;
-  const int maxiter = 100;
+  const int maxiter = 1000;
   // Iteration loop
   for (int iter = 0; iter < maxiter; ++iter) {
     fitold = fit;
@@ -122,6 +122,6 @@ void tucker_decomp(COOTensor3 &X, const std::vector<index_t> &ranks) {
   fmt::print("Tucker decomposition finished in {} [s]\n", tot_time);
   // output << fmt::format("normX = {}\n", originalNorm);
   // output << fmt::format("normCore = {}\n", coreNorm);
-  fmt::print("fits = {} [%]\n", fits);
+  // fmt::print("fits = {} [%]\n", fits);
 } 
   
