@@ -11,7 +11,7 @@ TEST(TestCompression, CSFCompression) {
 
   for (index_t test_mode = 0; test_mode < X.nmodes; ++test_mode) {
     CSFTensor3 csf(X, test_mode);
-    X.sort_mode(test_mode);
+    // X.sort_mode(test_mode);
 
     std::vector<thrust::host_vector<index_t>> decompressed_modes;
     std::vector<thrust::host_vector<index_t>> reference_modes;

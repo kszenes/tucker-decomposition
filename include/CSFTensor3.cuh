@@ -6,6 +6,7 @@
 #include "macros.cuh"
 #include "COOTensor3.cuh"
 
+
 class CSFTensor3 {
 public:
   explicit CSFTensor3(const COOTensor3& coo_tensor, const unsigned& mode);

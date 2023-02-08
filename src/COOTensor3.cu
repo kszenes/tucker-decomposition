@@ -56,10 +56,6 @@ COOTensor3::COOTensor3(const std::string &filename, const bool starts_at_zero)
 
   // Copy to device
   to_device();
-  // Create zip iterator
-  d_zip_it = thrust::make_zip_iterator(thrust::make_tuple(
-      d_modes[0].begin(), d_modes[1].begin(), d_modes[2].begin()
-  ));
 
   ifile.close();
   auto time = timer.seconds();
@@ -82,27 +78,6 @@ COOTensor3::COOTensor3(
   nmodes = shape.size();
   nnz = tmp_prod * chunk_size;
   chunk_size = new_chunk_size;
-}
-
-COOTensor3::COOTensor3(
-    const COOTensor3 &other, const std::vector<index_t> &permutation
-)
-    : nmodes(other.nmodes), nnz(other.nnz), chunk_size(other.chunk_size),
-      d_values(other.d_values), h_values(other.h_values) {
-  shape.resize(nmodes);
-  d_modes.resize(nmodes);
-  h_modes.resize(nmodes);
-  mode_permutation.resize(nmodes);
-  for (unsigned i = 0; i < nmodes; ++i) {
-    shape[permutation[i]] = other.shape[i];
-    d_modes[permutation[i]] = other.d_modes[i];
-    h_modes[permutation[i]] = other.h_modes[i];
-    mode_permutation[permutation[i]] = other.mode_permutation[i];
-  }
-  std::cout << "Copying and permuting tensor\n";
-  d_zip_it = thrust::make_zip_iterator(thrust::make_tuple(
-      d_modes[0].begin(), d_modes[1].begin(), d_modes[2].begin()
-  ));
 }
 
 void COOTensor3::to_device() {
@@ -141,45 +116,4 @@ void COOTensor3::print() {
     output += "]\n";
   }
   std::cout << output << '\n';
-}
-
-void COOTensor3::sort_mode(const index_t mode) {
-  assert((mode < nmodes) && "Mode out of bounds in sort");
-  if (mode == 0) {
-    thrust::sort_by_key(
-        d_zip_it, d_zip_it + nnz, d_values.begin(),
-        [] __host__ __device__(const IndexTuple &a, const IndexTuple &b) {
-          return (thrust::get<0>(a) < thrust::get<0>(b)) ||
-                 (thrust::get<0>(a) == thrust::get<0>(b) &&
-                  thrust::get<1>(a) < thrust::get<1>(b)) ||
-                 (thrust::get<0>(a) == thrust::get<0>(b) &&
-                  thrust::get<1>(a) == thrust::get<1>(b) &&
-                  thrust::get<2>(a) < thrust::get<2>(b));
-        }
-    );
-  } else if (mode == 1) {
-    thrust::sort_by_key(
-        d_zip_it, d_zip_it + nnz, d_values.begin(),
-        [] __host__ __device__(const IndexTuple &a, const IndexTuple &b) {
-          return (thrust::get<1>(a) < thrust::get<1>(b)) ||
-                 (thrust::get<1>(a) == thrust::get<1>(b) &&
-                  thrust::get<2>(a) < thrust::get<2>(b)) ||
-                 (thrust::get<1>(a) == thrust::get<1>(b) &&
-                  thrust::get<2>(a) == thrust::get<2>(b) &&
-                  thrust::get<0>(a) < thrust::get<0>(b));
-        }
-    );
-  } else if (mode == 2) {
-    thrust::sort_by_key(
-        d_zip_it, d_zip_it + nnz, d_values.begin(),
-        [] __host__ __device__(const IndexTuple &a, const IndexTuple &b) {
-          return (thrust::get<2>(a) < thrust::get<2>(b)) ||
-                 (thrust::get<2>(a) == thrust::get<2>(b) &&
-                  thrust::get<0>(a) < thrust::get<0>(b)) ||
-                 (thrust::get<2>(a) == thrust::get<2>(b) &&
-                  thrust::get<0>(a) == thrust::get<0>(b) &&
-                  thrust::get<1>(a) < thrust::get<1>(b));
-        }
-    );
-  }
 }

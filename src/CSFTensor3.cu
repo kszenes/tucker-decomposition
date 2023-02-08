@@ -152,4 +152,3 @@ value_t CSFTensor3::norm() const {
     )
   );
 }
-
