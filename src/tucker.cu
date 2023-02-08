@@ -58,17 +58,17 @@ void tucker_decomp(COOTensor3 &X, const std::vector<index_t> &ranks) {
   // csf.print();
   // auto sspTensor = ttm_chain(csf, factor_matrices);
 
-  // auto subchunk_size = coreSize / factor_matrices[csf.cyclic_permutation.front()].ncols;
+  // auto subchunk_size = coreSize / factor_matrices[csf.mode_permutation.front()].ncols;
 
   // svd(
   //   csf, sspTensor,
-  //   factor_matrices[csf.cyclic_permutation.front()],
+  //   factor_matrices[csf.mode_permutation.front()],
   //   subchunk_size
   // );
 
   // fmt::print("sspTensor: size = {}; vals = {}\n", sspTensor.size(), sspTensor);
   // auto coreTensor =  contract_last_mode(
-  //     csf, factor_matrices[csf.cyclic_permutation.front()],
+  //     csf, factor_matrices[csf.mode_permutation.front()],
   //     sspTensor, subchunk_size);
   
 
@@ -89,18 +89,18 @@ void tucker_decomp(COOTensor3 &X, const std::vector<index_t> &ranks) {
       // CSFTensors[mode].print();
       sspTensor = ttm_chain(CSFTensors[mode], factor_matrices);
       // fmt::print("Contraction 1: sspTensor = {}\n", sspTensor);
-      subchunk_size = coreSize / factor_matrices[CSFTensors[mode].cyclic_permutation.front()].ncols;
+      subchunk_size = coreSize / factor_matrices[CSFTensors[mode].mode_permutation.front()].ncols;
 
       auto use_gpu = true;
       svd_timer.start();
       svd(
         CSFTensors[mode], sspTensor,
-        factor_matrices[CSFTensors[mode].cyclic_permutation.front()],
+        factor_matrices[CSFTensors[mode].mode_permutation.front()],
         subchunk_size, use_gpu
       );
       auto svd_time = svd_timer.seconds();
       fmt::print("SVD completed in {} [s]\n", svd_time);
-      // fmt::print("U = {}\n", factor_matrices[CSFTensors[mode].cyclic_permutation.front()].d_values);
+      // fmt::print("U = {}\n", factor_matrices[CSFTensors[mode].mode_permutation.front()].d_values);
       // CSFTensors[mode].print();
       // exit(1);
     }
@@ -127,7 +127,7 @@ void tucker_decomp(COOTensor3 &X, const std::vector<index_t> &ranks) {
     if(iter != 0 && fitchange < tol) {
 
       fmt::print("\n\n === CONVERGED === \n\n");
-      // print_verification_script(X, CSFTensors, factor_matrices, coreTensor);
+      print_verification_script(X, CSFTensors, factor_matrices, coreTensor);
       break;
 
     }

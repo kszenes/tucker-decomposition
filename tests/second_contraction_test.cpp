@@ -19,7 +19,7 @@ TEST(TensorContraction, SecondContraction) {
   // Test along all modes
   for (index_t sortedMode = 0; sortedMode < X.nmodes; ++sortedMode) {
     CSFTensor3 csf(X, sortedMode);
-    index_t contractedMode = csf.cyclic_permutation.back();
+    index_t contractedMode = csf.mode_permutation.back();
     DenseMatrix U(csf.shape.back(), colsU, "random");
     auto host_reference_out{host_first_contraction(X, U, contractedMode)};
 
@@ -32,7 +32,7 @@ TEST(TensorContraction, SecondContraction) {
 
     std::vector<index_t> out_shape;
     for (index_t i = 0; i < X.nmodes; ++i) {
-      if (i != csf.cyclic_permutation.back()) {
+      if (i != csf.mode_permutation.back()) {
         out_shape.push_back(X.shape[i]);
       } else {
         out_shape.push_back(U.ncols);
@@ -45,10 +45,10 @@ TEST(TensorContraction, SecondContraction) {
     for (index_t i = 0; i < mode0.size(); ++i) {
       auto first_mode = mode0[i];
       auto second_mode = mode1[i];
-      auto index = first_mode * strides[csf.cyclic_permutation[0]] +
-                  second_mode * strides[csf.cyclic_permutation[1]];
+      auto index = first_mode * strides[csf.mode_permutation[0]] +
+                  second_mode * strides[csf.mode_permutation[1]];
       for (index_t j = 0; j < U.ncols; ++j) {
-        gpu_out[index + j * strides[csf.cyclic_permutation[2]]] = sparse_out[i * U.ncols + j];
+        gpu_out[index + j * strides[csf.mode_permutation[2]]] = sparse_out[i * U.ncols + j];
       }
     };
 

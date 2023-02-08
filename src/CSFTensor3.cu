@@ -26,13 +26,13 @@ CSFTensor3::CSFTensor3(const COOTensor3 &coo_tensor, const unsigned &mode)
   GPUTimer timer;
   timer.start();
 
-  cyclic_permutation.resize(nmodes);
-  std::iota(cyclic_permutation.begin(), cyclic_permutation.end(), 0);
+  mode_permutation.resize(nmodes);
+  std::iota(mode_permutation.begin(), mode_permutation.end(), 0);
   // === Optimal ordering based on extents ===
   fmt::print("Using OPTIMAL CSF mode ordering!\n");
   std::sort(
-    cyclic_permutation.begin(),
-    cyclic_permutation.end(),
+    mode_permutation.begin(),
+    mode_permutation.end(),
     [&](const auto a, const auto b){
       if (a == mode) {
         return true;
@@ -47,27 +47,27 @@ CSFTensor3::CSFTensor3(const COOTensor3 &coo_tensor, const unsigned &mode)
   // fmt::print("Using PARTI CSF mode ordering!\n");
   // for(size_t i = 0; i < nmodes; ++i) {
   //     if(i < mode) {
-  //         cyclic_permutation[nmodes - i - 1] = i;
+  //         mode_permutation[nmodes - i - 1] = i;
   //     } else if(i != mode) {
-  //         cyclic_permutation[nmodes - i] = i;
+  //         mode_permutation[nmodes - i] = i;
   //     }
   // }
-  // cyclic_permutation[0] = mode;
+  // mode_permutation[0] = mode;
 
   std::transform(
-    cyclic_permutation.begin(),
-    cyclic_permutation.end(),
+    mode_permutation.begin(),
+    mode_permutation.end(),
     shape.begin(),
     [&](const auto& i){ return coo_tensor.shape[i]; }
   );
-  fmt::print("Permutation = {}\n", cyclic_permutation);
+  fmt::print("Permutation = {}\n", mode_permutation);
   
   fptr.resize(nmodes - 1);
   fidx.resize(nmodes);
   // Copy tmp coo_modes for csf construction
   std::vector<thrust::device_vector<index_t>> coo_modes(nmodes);
   for (size_t i = 0; i < nmodes; ++i) {
-    copy_thrust(coo_modes[i], coo_tensor.d_modes[cyclic_permutation[i]]);
+    copy_thrust(coo_modes[i], coo_tensor.d_modes[mode_permutation[i]]);
   }
 
   // Copy values
@@ -83,14 +83,48 @@ void CSFTensor3::buildCSFTensor3(
 ) {
   auto nmodes = coo_modes.size();
 
-  auto zip_it_3d = thrust::make_zip_iterator(gen_begin_tuple<3>(coo_modes));
+  if (nmodes == 4) {
+    auto zip_it_4d = thrust::make_zip_iterator(gen_begin_tuple<4>(coo_modes));
 
-  // Sort along 0th mode
-  thrust::sort_by_key(
-      zip_it_3d, zip_it_3d + nnz, std::begin(d_values)
-  );
+    // Sort along 0th mode
+    thrust::sort_by_key(
+        zip_it_4d, zip_it_4d + nnz, std::begin(d_values)
+    );
+
+  } else if (nmodes == 3) {
+    auto zip_it_3d = thrust::make_zip_iterator(gen_begin_tuple<3>(coo_modes));
+
+    // Sort along 0th mode
+    thrust::sort_by_key(
+        zip_it_3d, zip_it_3d + nnz, std::begin(d_values)
+    );
+
+  } else {
+    std::runtime_error("Tucker only supports order 3 and 4 tensors.");
+  }
+
   // Set first fiber idx
-  copy_thrust(fidx[2], coo_modes[2]);
+  copy_thrust(fidx.back(), coo_modes.back());
+
+  if (nmodes == 4) {
+    auto zip3d_in = thrust::make_zip_iterator(gen_begin_tuple<3>(coo_modes));
+
+    // fmt::print("First compression:\n{}\n{}\n", coo_modes[0], coo_modes[1]);
+    // First compression
+    fptr[2].resize(coo_modes[0].size());
+    thrust::sequence(fptr[2].begin(), fptr[2].end(), 0);
+    index_t largest_index = fptr[2].back() + 1;
+    auto [first, second] = thrust::unique_by_key(
+        zip3d_in, zip3d_in + nnz, fptr[2].begin()
+    );
+    auto num_fibers = thrust::distance(fptr[2].begin(), second);
+    *second = largest_index;
+    fptr[2].resize(num_fibers + 1);
+    coo_modes[0].resize(num_fibers);
+    coo_modes[1].resize(num_fibers);
+    coo_modes[2].resize(num_fibers);
+    copy_thrust(fidx[2], coo_modes[2]);
+  }
 
   auto zip2d_in = thrust::make_zip_iterator(gen_begin_tuple<2>(coo_modes));
 
@@ -131,7 +165,7 @@ void CSFTensor3::print() const {
   fmt::print("  shape = {}\n", shape);
   fmt::print(
       "  permutation = {}\n\n  == Values ==\n  values = {}\n",
-      cyclic_permutation, d_values
+      mode_permutation, d_values
   );
   fmt::print("\n  == Indices ==\n");
   for (size_t i = 0; i < fidx.size(); ++i) {

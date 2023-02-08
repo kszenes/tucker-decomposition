@@ -26,7 +26,7 @@ TEST(TensorContraction, FirstContraction) {
   for (index_t sortedMode = 0; sortedMode < X.nmodes; ++sortedMode) {
     CSFTensor3 csf(X, sortedMode);
     // csf.print();
-    index_t contractedMode = csf.cyclic_permutation.back();
+    index_t contractedMode = csf.mode_permutation.back();
     const auto& firstMatrix = matrices[contractedMode];
     auto host_reference_out{host_first_contraction(X, firstMatrix, contractedMode)};
 
@@ -39,7 +39,7 @@ TEST(TensorContraction, FirstContraction) {
 
     std::vector<index_t> out_shape;
     for (index_t i = 0; i < X.nmodes; ++i) {
-      if (i != csf.cyclic_permutation.back()) {
+      if (i != csf.mode_permutation.back()) {
         out_shape.push_back(X.shape[i]);
       } else {
         out_shape.push_back(firstMatrix.ncols);
@@ -53,10 +53,10 @@ TEST(TensorContraction, FirstContraction) {
     for (index_t i = 0; i < mode0.size(); ++i) {
       auto first_mode = mode0[i];
       auto second_mode = mode1[i];
-      auto index = first_mode * strides[csf.cyclic_permutation[0]] +
-                  second_mode * strides[csf.cyclic_permutation[1]];
+      auto index = first_mode * strides[csf.mode_permutation[0]] +
+                  second_mode * strides[csf.mode_permutation[1]];
       for (index_t j = 0; j < firstMatrix.ncols; ++j) {
-        gpu_out[index + j * strides[csf.cyclic_permutation[2]]] = sparse_out[i * firstMatrix.ncols + j];
+        gpu_out[index + j * strides[csf.mode_permutation[2]]] = sparse_out[i * firstMatrix.ncols + j];
       }
     };
 
@@ -68,7 +68,7 @@ TEST(TensorContraction, FirstContraction) {
     // fmt::print("gpu_out = {}\n", gpu_out);
     // fmt::print("firstMatrix = {}\n", firstMatrix.h_values);
     // === Second contraction ===
-    const auto& secondMatrix = matrices[csf.cyclic_permutation[1]];
+    const auto& secondMatrix = matrices[csf.mode_permutation[1]];
     // fmt::print("secondMatrix = {}\n", secondMatrix.h_values);
 
     auto host_reference_second = host_second_contraction(csf, host_reference_out, matrices);
@@ -79,9 +79,9 @@ TEST(TensorContraction, FirstContraction) {
     );
     // fmt::print("Second contraction device: size={}\n{}\n", penultimateTensor.size(), penultimateTensor);
 
-    out_shape[csf.cyclic_permutation[0]] = csf.shape[0];
-    out_shape[csf.cyclic_permutation[1]] = secondMatrix.ncols;
-    out_shape[csf.cyclic_permutation[2]] = firstMatrix.ncols;
+    out_shape[csf.mode_permutation[0]] = csf.shape[0];
+    out_shape[csf.mode_permutation[1]] = secondMatrix.ncols;
+    out_shape[csf.mode_permutation[2]] = firstMatrix.ncols;
     strides[0] = out_shape[1] * out_shape[2];
     strides[1] = out_shape[2];
     strides[2] = 1;
@@ -97,9 +97,9 @@ TEST(TensorContraction, FirstContraction) {
       for (index_t second_mode = 0; second_mode < secondMatrix.ncols; ++second_mode) {
         for (index_t third_mode = 0; third_mode < firstMatrix.ncols; ++third_mode) {
           
-          index_t index = first_mode * strides[csf.cyclic_permutation[0]] +
-                          second_mode * strides[csf.cyclic_permutation[1]] +
-                          third_mode * strides[csf.cyclic_permutation[2]];
+          index_t index = first_mode * strides[csf.mode_permutation[0]] +
+                          second_mode * strides[csf.mode_permutation[1]] +
+                          third_mode * strides[csf.mode_permutation[2]];
 
           second_contraction_dense[index] = penultimateTensor[i * chunkSize +
                                                     second_mode * subchunkSize +
@@ -111,11 +111,11 @@ TEST(TensorContraction, FirstContraction) {
     // fmt::print("host_reference_second =\n{}\n", host_reference_second);
     for (index_t i = 0; i < second_contraction_dense.size(); ++i) {
       ASSERT_NEAR(second_contraction_dense[i], host_reference_second[i], 1e-6) << 
-        fmt::format("Failed for 2nd contraction mode {} at index {}\n", csf.cyclic_permutation[1], i);
+        fmt::format("Failed for 2nd contraction mode {} at index {}\n", csf.mode_permutation[1], i);
     }
 
     // === Third Contraction ===
-    const auto& thirdMatrix = matrices[csf.cyclic_permutation[0]];
+    const auto& thirdMatrix = matrices[csf.mode_permutation[0]];
     // fmt::print("thirdMatrix: size = {}; vals = {}\n", thirdMatrix.h_values.size(), thirdMatrix.h_values);
     // fmt::print("penultimateTensor: size = {}; vals = {}\n", penultimateTensor.size(), penultimateTensor);
     auto coreTensor = thrust::host_vector<value_t>(
@@ -127,7 +127,7 @@ TEST(TensorContraction, FirstContraction) {
     // fmt::print("Expected: {}\nGot: {}\n", host_reference_third, coreTensor);
     // for (index_t i = 0; i < coreTensor.size(); ++i) {
     //   ASSERT_NEAR(coreTensor[i], host_reference_third[i], 1e-6) << 
-    //     fmt::format("Failed for 3rd contraction mode {} at index {}\n", csf.cyclic_permutation[0], i);
+    //     fmt::format("Failed for 3rd contraction mode {} at index {}\n", csf.mode_permutation[0], i);
     // }
   }
 }

@@ -107,7 +107,7 @@ thrust::device_vector<value_t> contract_last_mode(
     const CSFTensor3 &tensor, const std::vector<DenseMatrix> &matrices,
     const thrust::device_vector<value_t> &in_values, const size_t subchunk_size
 ) {
-  auto mode = tensor.cyclic_permutation.front();
+  auto mode = tensor.mode_permutation.front();
   const auto& matrix = matrices[mode];
 
   size_t out_num_chunks = 1;
@@ -148,27 +148,23 @@ thrust::device_vector<value_t> contract_last_mode(
   return out_values;
 }
 
-thrust::host_vector<value_t> ttm_chain(
+thrust::device_vector<value_t> ttm_chain(
     const CSFTensor3 &tensor, std::vector<DenseMatrix> &factor_matrices
 ) {
-  thrust::host_vector<index_t> last_mode(tensor.fidx[0]);
-
   // Contract First Mode
   auto out_first = contract_first_mode(
-      tensor, factor_matrices[tensor.cyclic_permutation.back()]
+      tensor, factor_matrices[tensor.mode_permutation.back()]
   );
   // fmt::print("out_first = {}\n", out_first);
-  auto subchunk_size = factor_matrices[tensor.cyclic_permutation.back()].ncols;
+  auto subchunk_size = factor_matrices[tensor.mode_permutation.back()].ncols;
   // Contract Second Mode
   auto out_second = contract_second_mode(
       tensor,
-      factor_matrices[tensor.cyclic_permutation[1]],
+      factor_matrices[tensor.mode_permutation[1]],
       out_first, subchunk_size
   );
 
-  subchunk_size *= factor_matrices[tensor.cyclic_permutation[1]].ncols;
-  auto &U_update = factor_matrices[tensor.cyclic_permutation.front()];
+  subchunk_size *= factor_matrices[tensor.mode_permutation[1]].ncols;
 
-  thrust::host_vector<value_t> ssp_matrix(out_second);
-  return ssp_matrix;
+  return out_second;
 }

@@ -107,21 +107,21 @@ thrust::host_vector<value_t> host_second_contraction(
   const thrust::host_vector<value_t>& denseTensor,
   const std::vector<DenseMatrix>& Us
 ) {
-  auto contractedMode = csf.cyclic_permutation[1];
+  auto contractedMode = csf.mode_permutation[1];
 
   std::vector<index_t> in_shape(3);
-  in_shape[csf.cyclic_permutation[0]] = csf.shape[0];
-  in_shape[csf.cyclic_permutation[1]] = csf.shape[1];
-  in_shape[csf.cyclic_permutation[2]] = Us[csf.cyclic_permutation[2]].ncols;
+  in_shape[csf.mode_permutation[0]] = csf.shape[0];
+  in_shape[csf.mode_permutation[1]] = csf.shape[1];
+  in_shape[csf.mode_permutation[2]] = Us[csf.mode_permutation[2]].ncols;
 
   std::vector<index_t> out_shape(3);
-  out_shape[csf.cyclic_permutation[0]] = csf.shape[0];
-  out_shape[csf.cyclic_permutation[1]] = Us[csf.cyclic_permutation[1]].ncols;
-  out_shape[csf.cyclic_permutation[2]] = Us[csf.cyclic_permutation[2]].ncols;
+  out_shape[csf.mode_permutation[0]] = csf.shape[0];
+  out_shape[csf.mode_permutation[1]] = Us[csf.mode_permutation[1]].ncols;
+  out_shape[csf.mode_permutation[2]] = Us[csf.mode_permutation[2]].ncols;
 
   return contract(
-    denseTensor, Us[csf.cyclic_permutation[1]].h_values,
-    out_shape, in_shape, Us[csf.cyclic_permutation[1]].ncols, contractedMode
+    denseTensor, Us[csf.mode_permutation[1]].h_values,
+    out_shape, in_shape, Us[csf.mode_permutation[1]].ncols, contractedMode
   );
 
 }
@@ -131,21 +131,21 @@ thrust::host_vector<value_t> host_third_contraction(
   const thrust::host_vector<value_t>& denseTensor,
   const std::vector<DenseMatrix>& Us
 ) {
-  auto contractedMode = csf.cyclic_permutation[0];
+  auto contractedMode = csf.mode_permutation[0];
 
   std::vector<index_t> in_shape(3);
-  in_shape[csf.cyclic_permutation[0]] = csf.shape[0];
-  in_shape[csf.cyclic_permutation[1]] = Us[csf.cyclic_permutation[1]].ncols;
-  in_shape[csf.cyclic_permutation[2]] = Us[csf.cyclic_permutation[2]].ncols;
+  in_shape[csf.mode_permutation[0]] = csf.shape[0];
+  in_shape[csf.mode_permutation[1]] = Us[csf.mode_permutation[1]].ncols;
+  in_shape[csf.mode_permutation[2]] = Us[csf.mode_permutation[2]].ncols;
 
   std::vector<index_t> out_shape(3);
-  out_shape[csf.cyclic_permutation[0]] = Us[csf.cyclic_permutation[0]].ncols;
-  out_shape[csf.cyclic_permutation[1]] = Us[csf.cyclic_permutation[1]].ncols;
-  out_shape[csf.cyclic_permutation[2]] = Us[csf.cyclic_permutation[2]].ncols;
+  out_shape[csf.mode_permutation[0]] = Us[csf.mode_permutation[0]].ncols;
+  out_shape[csf.mode_permutation[1]] = Us[csf.mode_permutation[1]].ncols;
+  out_shape[csf.mode_permutation[2]] = Us[csf.mode_permutation[2]].ncols;
 
   return contract(
-    denseTensor, Us[csf.cyclic_permutation[0]].h_values,
-    out_shape, in_shape, Us[csf.cyclic_permutation[0]].ncols, contractedMode
+    denseTensor, Us[csf.mode_permutation[0]].h_values,
+    out_shape, in_shape, Us[csf.mode_permutation[0]].ncols, contractedMode
   );
 
 }

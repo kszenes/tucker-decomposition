@@ -9,7 +9,7 @@
 #include "macros.cuh"
 #include "svd.cuh"
 
-thrust::host_vector<value_t> ttm_chain(
+thrust::device_vector<value_t> ttm_chain(
     const CSFTensor3 &tensor, std::vector<DenseMatrix> &factor_matrices
 );
 

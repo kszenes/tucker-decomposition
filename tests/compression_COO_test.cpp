@@ -33,7 +33,7 @@ TEST(TestCompression, CSFCompression) {
 
       // test modes
       for (index_t i = 0; i < csf.nmodes; ++i) {
-        auto true_mode = csf.cyclic_permutation[i];
+        auto true_mode = csf.mode_permutation[i];
         ASSERT_TRUE(decompressed_modes[i] == reference_modes[true_mode]) <<
           "Failed for CSF-" << mode << ". Mismatch at mode: " << i << '\n' <<
           fmt::format("Expected: {};\nGot: {}\n", reference_modes[true_mode], decompressed_modes[i]);

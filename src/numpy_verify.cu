@@ -31,11 +31,12 @@ void print_verification_script(
           i, e.d_values, e.nrows, e.ncols);
         ++i;
       }
-      output << fmt::format("\ncore = np.array({}).reshape({}, {}, {})\n",
+      output << fmt::format("\ncore = np.array({}).reshape({}, {}, {}).transpose({})\n",
         coreTensor,
         factor_matrices[0].ncols,
         factor_matrices[1].ncols,
-        factor_matrices[2].ncols);
+        factor_matrices[2].ncols,
+        CSFTensors.front().mode_permutation);
 
       output << fmt::format("out = np.einsum('ijk,li,mj,nk->lmn', core, U0, U1, U2)\n");
       output << fmt::format("to_X = np.linalg.norm(X - out) / np.linalg.norm(X)\n");
