@@ -8,7 +8,7 @@
 
 class CSFTensor3 {
 public:
-  explicit CSFTensor3(const COOTensor3& coo_tensor, const int& mode);
+  explicit CSFTensor3(const COOTensor3& coo_tensor, const unsigned& mode);
 
   void buildCSFTensor3(
       std::vector<thrust::device_vector<index_t>> &coo_modes

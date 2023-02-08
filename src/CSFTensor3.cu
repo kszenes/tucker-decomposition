@@ -19,7 +19,7 @@ auto gen_begin_tuple(std::vector<T>& v) {
     return gen_tuple_impl(v, std::make_index_sequence<N>{});
 }
 
-CSFTensor3::CSFTensor3(const COOTensor3 &coo_tensor, const int &mode)
+CSFTensor3::CSFTensor3(const COOTensor3 &coo_tensor, const unsigned &mode)
 :  nmodes(coo_tensor.d_modes.size()), nnz(coo_tensor.d_values.size()),
    shape(coo_tensor.shape)
 {
@@ -28,27 +28,39 @@ CSFTensor3::CSFTensor3(const COOTensor3 &coo_tensor, const int &mode)
 
   cyclic_permutation.resize(nmodes);
   std::iota(cyclic_permutation.begin(), cyclic_permutation.end(), 0);
-  // permute
-  // TODO: Make general
-  // if (mode == 0) {
-  //   std::swap(cyclic_permutation[1], cyclic_permutation[2]);
-  //   std::swap(shape[1], shape[2]);
-  // }
-  // else if (mode == 1) {
-  //   std::rotate(
-  //     cyclic_permutation.begin(),
-  //     cyclic_permutation.begin() + mode,
-  //     cyclic_permutation.end());
-  //   std::rotate(shape.begin(), shape.begin() + mode, shape.end());
-  // } else if (mode == 2) {
-  //   std::swap(cyclic_permutation[0], cyclic_permutation[mode]);
-  //   std::swap(shape[0], shape[mode]);
-  // }
-  std::rotate(
+  // === Optimal ordering based on extents ===
+  fmt::print("Using OPTIMAL CSF mode ordering!\n");
+  std::sort(
     cyclic_permutation.begin(),
-    cyclic_permutation.begin() + mode,
-    cyclic_permutation.end());
-  std::rotate(shape.begin(), shape.begin() + mode, shape.end());
+    cyclic_permutation.end(),
+    [&](const auto a, const auto b){
+      if (a == mode) {
+        return true;
+      } else if (b == mode) {
+        return false;
+      } else {
+        return coo_tensor.shape[a] <= coo_tensor.shape[b];
+      }
+      });
+
+  //  === Matching ParTI ordering ===
+  // fmt::print("Using PARTI CSF mode ordering!\n");
+  // for(size_t i = 0; i < nmodes; ++i) {
+  //     if(i < mode) {
+  //         cyclic_permutation[nmodes - i - 1] = i;
+  //     } else if(i != mode) {
+  //         cyclic_permutation[nmodes - i] = i;
+  //     }
+  // }
+  // cyclic_permutation[0] = mode;
+
+  std::transform(
+    cyclic_permutation.begin(),
+    cyclic_permutation.end(),
+    shape.begin(),
+    [&](const auto& i){ return coo_tensor.shape[i]; }
+  );
+  fmt::print("Permutation = {}\n", cyclic_permutation);
   
   fptr.resize(nmodes - 1);
   fidx.resize(nmodes);

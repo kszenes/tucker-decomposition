@@ -4,7 +4,11 @@
 #include <cusolverDn.h>
 #include <helper_cuda.cuh>
 
-#define CAST_THRUST(x) thrust::raw_pointer_cast(x)
+template <typename T>
+T* thrust::raw_pointer_cast(thrust::device_vector<T> vec) {
+  return thrust::raw_pointer_cast(vec.data());
+}
+
 #define CUDA_CHECK(ans)                                                        \
   { gpuAssert((ans), __FILE__, __LINE__); }
 inline void gpuAssert(cudaError_t code, const char *file, int line,

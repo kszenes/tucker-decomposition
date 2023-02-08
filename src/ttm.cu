@@ -51,9 +51,9 @@ contract_first_mode(const CSFTensor3 &tensor, const DenseMatrix &matrix) {
   timer.start();
 
   spt_TTMRankRBNnzKernelSM<<<nblocks, dimBlock, shmen_size>>>(
-      CAST_THRUST(out_values.data()), out_chunk_size, out_num_chunks,
-      CAST_THRUST(tensor.d_values.data()), CAST_THRUST(tensor.fidx[2].data()),
-      CAST_THRUST(tensor.fptr[1].data()), CAST_THRUST(matrix.d_values.data()),
+      thrust::raw_pointer_cast(out_values.data()), out_chunk_size, out_num_chunks,
+      thrust::raw_pointer_cast(tensor.d_values.data()), thrust::raw_pointer_cast(tensor.fidx[2].data()),
+      thrust::raw_pointer_cast(tensor.fptr[1].data()), thrust::raw_pointer_cast(matrix.d_values.data()),
       matrix.nrows, matrix.ncols, matrix.ncols
   );
   auto time = timer.seconds();
@@ -87,10 +87,10 @@ thrust::device_vector<value_t> contract_second_mode(
   // fmt::print("U = {}\n", matrix.d_values);
       
   ttm_semisparse_kernel<<<grid, threads>>>(
-      CAST_THRUST(tensor.fptr[0].data()), CAST_THRUST(tensor.fidx[1].data()),
+      thrust::raw_pointer_cast(tensor.fptr[0].data()), thrust::raw_pointer_cast(tensor.fidx[1].data()),
       matrix.nrows, matrix.ncols, out_num_chunks, out_chunk_size, subchunk_size,
-      CAST_THRUST(out_values.data()), CAST_THRUST(in_values.data()),
-      CAST_THRUST(matrix.d_values.data())
+      thrust::raw_pointer_cast(out_values.data()), thrust::raw_pointer_cast(in_values.data()),
+      thrust::raw_pointer_cast(matrix.d_values.data())
   );
   auto time = timer.seconds();
   fmt::print(
@@ -108,7 +108,6 @@ thrust::device_vector<value_t> contract_last_mode(
     const thrust::device_vector<value_t> &in_values, const size_t subchunk_size
 ) {
   auto mode = tensor.cyclic_permutation.front();
-  fmt::print("Core computed using {} mode\n", mode);
   const auto& matrix = matrices[mode];
 
   size_t out_num_chunks = 1;
@@ -133,10 +132,10 @@ thrust::device_vector<value_t> contract_last_mode(
   // thrust::sequence(d_fptr.begin(), d_fptr.end());
       
   ttm_semisparse_kernel<<<grid, threads>>>(
-      CAST_THRUST(d_fptr.data()), CAST_THRUST(tensor.fidx[0].data()),
+      thrust::raw_pointer_cast(d_fptr.data()), thrust::raw_pointer_cast(tensor.fidx[0].data()),
       matrix.nrows, matrix.ncols, out_num_chunks, out_chunk_size, subchunk_size,
-      CAST_THRUST(out_values.data()), CAST_THRUST(in_values.data()),
-      CAST_THRUST(matrix.d_values.data())
+      thrust::raw_pointer_cast(out_values.data()), thrust::raw_pointer_cast(in_values.data()),
+      thrust::raw_pointer_cast(matrix.d_values.data())
   );
   auto time = timer.seconds();
   fmt::print(

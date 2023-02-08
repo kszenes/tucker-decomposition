@@ -1,5 +1,6 @@
 #include "svd.cuh"
 
+
 thrust::device_vector<value_t> transpose_matrix(
   const cublasHandle_t& cublasH,
   const thrust::device_vector<value_t>& matrix,
@@ -13,9 +14,9 @@ thrust::device_vector<value_t> transpose_matrix(
   CUDA_CHECK(cublasDgeam(
     cublasH, CUBLAS_OP_T, CUBLAS_OP_N,
     ldc, ldm, &alpha,
-    CAST_THRUST(matrix.data()), ldm,
+    thrust::raw_pointer_cast(matrix.data()), ldm,
     &beta, nullptr, ldc,
-    CAST_THRUST(matrix_T.data()), ldc
+    thrust::raw_pointer_cast(matrix_T.data()), ldc
   ));
   return matrix_T;
 }
@@ -120,17 +121,10 @@ thrust::device_vector<value_t> call_svd(
     CUDA_CHECK(cudaMalloc(reinterpret_cast<void **>(&devInfo), sizeof(int)));
 
 
-    GPUTimer timer;
-    timer.start();
-    fmt::print("m = {}\n", m);
-    fmt::print("n = {}\n", n);
-    fmt::print("lda = {}\n", m);
-    fmt::print("ldu = {}\n", m);
-    fmt::print("ldvT = {}\n", n);
     CUDA_CHECK(cusolverDnDgesvd(
       cusolverH, jobu, jobvt, m, n,
-      CAST_THRUST(ssp_copy.data()), m,
-      CAST_THRUST(S.data()),
+      thrust::raw_pointer_cast(ssp_copy.data()), m,
+      thrust::raw_pointer_cast(S.data()),
       nullptr, m, 
       nullptr, n,
       d_work, lwork, d_rwork, devInfo));
@@ -139,9 +133,6 @@ thrust::device_vector<value_t> call_svd(
     //   fmt::print("cuSOLVER error #{} with devInfo: {}\n", code, *devInfo);
     //   exit(1);
     // }
-
-    auto time = timer.seconds();
-    fmt::print("cuSOLVER SVD exectued in {} [s]\n", time);
 
     CUDA_CHECK(cudaFree(devInfo));
     CUDA_CHECK(cudaFree(d_work));
@@ -190,10 +181,10 @@ thrust::device_vector<value_t> call_svdj(
     /* step 4: query working space of SVD */
     CUDA_CHECK(cusolverDnDgesvdj_bufferSize(
         cusolverH, jobz, econ, svd_cols, svd_rows,        
-        CAST_THRUST(ssp_copy.data()), svd_cols,             
-        CAST_THRUST(S.data()),
-        CAST_THRUST(Vsvd.data()), svd_cols,
-        CAST_THRUST(Usvd.data()), svd_rows,
+        thrust::raw_pointer_cast(ssp_copy.data()), svd_cols,             
+        thrust::raw_pointer_cast(S.data()),
+        thrust::raw_pointer_cast(Vsvd.data()), svd_cols,
+        thrust::raw_pointer_cast(Usvd.data()), svd_rows,
         &lwork, gesvdj_params));
     // NOTE: in order to compute U using row major, compute V instead!
     CUDA_CHECK(cudaMalloc(reinterpret_cast<void **>(&d_work), sizeof(double) * lwork));
@@ -203,10 +194,10 @@ thrust::device_vector<value_t> call_svdj(
     timer.start();
     CUDA_CHECK(cusolverDnDgesvdj(
         cusolverH, jobz, econ, svd_cols, svd_rows,        
-        CAST_THRUST(ssp_copy.data()), svd_cols,             
-        CAST_THRUST(S.data()),
-        CAST_THRUST(Vsvd.data()), svd_cols,
-        CAST_THRUST(Usvd.data()), svd_rows,
+        thrust::raw_pointer_cast(ssp_copy.data()), svd_cols,             
+        thrust::raw_pointer_cast(S.data()),
+        thrust::raw_pointer_cast(Vsvd.data()), svd_cols,
+        thrust::raw_pointer_cast(Usvd.data()), svd_rows,
         d_work, lwork, devInfo, gesvdj_params));
     auto time = timer.seconds();
     fmt::print("cuSOLVER SVD exectued in {} [s]\n", time);

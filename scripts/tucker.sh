@@ -1,6 +1,6 @@
 #!/bin/bash
 
-FILENAME="/users/kszenes/ParTI/tucker-decomp/example_tensors/sparse_10_10_10.tns"
-RANK=10 
+FILENAME="/users/kszenes/ParTI/tucker-decomp/example_tensors/nell-2/nell-2.tns"
+RANK=16 
 
 /users/kszenes/ParTI/tucker-decomp/build/tucker ${FILENAME} ${RANK} ${RANK} ${RANK}

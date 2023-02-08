@@ -14,16 +14,29 @@ void tucker_decomp(COOTensor3 &X, const std::vector<index_t> &ranks) {
   CSFTensors.reserve(X.nmodes);
   std::vector<DenseMatrix> factor_matrices;
   factor_matrices.reserve(X.nmodes);
-  GPUTimer csf_timer, total_timer;
+  GPUTimer csf_timer, svd_timer, total_timer;
   total_timer.start();
   csf_timer.start();
   for (unsigned mode = 0; mode < X.nmodes; ++mode) {
+    fmt::print("Initializing mode {} CSF and Factors\n", mode);
     CSFTensors.emplace_back(X, mode);
     // CSFTensors[mode].print();
     factor_matrices.emplace_back(X.shape[mode], ranks[mode], "random_seed");
     // factor_matrices.emplace_back("/users/kszenes/ParTI/tucker-decomp/example_tensors/dense_5_5.tns", true);
     // factor_matrices.emplace_back("/users/kszenes/ParTI/tucker-decomp/example_tensors/dense_5_2.tns", true);
     // factor_matrices[mode].print();
+  }
+
+  int ii = 0;
+  for (const auto& e : CSFTensors) {
+    auto fptr_size = std::accumulate(
+      e.fptr.begin(), e.fptr.end(), 0,
+      [](const auto& a, const auto& b){ return a + b.size(); });
+    auto fidx_size = std::accumulate(
+      e.fidx.begin(), e.fidx.end(), 0,
+      [](const auto& a, const auto& b){ return a + b.size(); });
+    fmt::print("Mode {}: fidx_size = {}, fptr_size = {}\n", ii, fidx_size, fptr_size);
+    ++ii;
   }
 
   // fmt::print("U matrices:\n");
@@ -79,16 +92,18 @@ void tucker_decomp(COOTensor3 &X, const std::vector<index_t> &ranks) {
       subchunk_size = coreSize / factor_matrices[CSFTensors[mode].cyclic_permutation.front()].ncols;
 
       auto use_gpu = true;
+      svd_timer.start();
       svd(
         CSFTensors[mode], sspTensor,
         factor_matrices[CSFTensors[mode].cyclic_permutation.front()],
         subchunk_size, use_gpu
       );
+      auto svd_time = svd_timer.seconds();
+      fmt::print("SVD completed in {} [s]\n", svd_time);
       // fmt::print("U = {}\n", factor_matrices[CSFTensors[mode].cyclic_permutation.front()].d_values);
       // CSFTensors[mode].print();
       // exit(1);
     }
-    fmt::print("core computed through\n");
     auto coreTensor = contract_last_mode(
         CSFTensors.front(), factor_matrices,
         sspTensor, subchunk_size);
@@ -112,7 +127,7 @@ void tucker_decomp(COOTensor3 &X, const std::vector<index_t> &ranks) {
     if(iter != 0 && fitchange < tol) {
 
       fmt::print("\n\n === CONVERGED === \n\n");
-      print_verification_script(X, CSFTensors, factor_matrices, coreTensor);
+      // print_verification_script(X, CSFTensors, factor_matrices, coreTensor);
       break;
 
     }
