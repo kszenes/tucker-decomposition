@@ -126,11 +126,15 @@ __global__ void ttm_semisparse_kernel(
         value_t accumulate = 0;
         for(size_t j = inz_begin; j < inz_end; ++j) { // loop over fiber i
             size_t c = X_indices_m[j]; // get mode-n index of X: c ∈ [1, size(mode-n)]
+            // printf("c = %d; j = %d\n", (unsigned) c, (unsigned) j);
             if(c < nrows && r < ncols) {
                 accumulate += X_values[j * X_chunk_size + k] * U_values[c * ncols + r];
+                // accumulate += X_values[j * X_chunk_size + k];
+                // printf("U_values: %d; X_values: %d\n", (int)(c * ncols + r), (int)(j * X_chunk_size + k));
             }
         }
         out_values[i * out_chunk_size + r * X_chunk_size + k] += accumulate;
+        // out_values[0] += accumulate;
     }
 }
 

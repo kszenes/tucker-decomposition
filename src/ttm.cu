@@ -3,7 +3,7 @@
 
 thrust::device_vector<value_t>
 contract_first_mode(const CSFTensor3 &tensor, const DenseMatrix &matrix) {
-  size_t out_num_chunks = tensor.fidx[1].size();
+  size_t out_num_chunks = tensor.fidx[tensor.nmodes - 2].size();
   size_t out_chunk_size = matrix.ncols;
   thrust::device_vector<value_t> out_values(out_num_chunks * out_chunk_size);
   out_values.resize(out_num_chunks * out_chunk_size);
@@ -52,8 +52,8 @@ contract_first_mode(const CSFTensor3 &tensor, const DenseMatrix &matrix) {
 
   spt_TTMRankRBNnzKernelSM<<<nblocks, dimBlock, shmen_size>>>(
       thrust::raw_pointer_cast(out_values.data()), out_chunk_size, out_num_chunks,
-      thrust::raw_pointer_cast(tensor.d_values.data()), thrust::raw_pointer_cast(tensor.fidx[2].data()),
-      thrust::raw_pointer_cast(tensor.fptr[1].data()), thrust::raw_pointer_cast(matrix.d_values.data()),
+      thrust::raw_pointer_cast(tensor.d_values.data()), thrust::raw_pointer_cast(tensor.fidx.back().data()),
+      thrust::raw_pointer_cast(tensor.fptr.back().data()), thrust::raw_pointer_cast(matrix.d_values.data()),
       matrix.nrows, matrix.ncols, matrix.ncols
   );
   auto time = timer.seconds();
@@ -67,15 +67,19 @@ contract_first_mode(const CSFTensor3 &tensor, const DenseMatrix &matrix) {
   return out_values;
 }
 
-thrust::device_vector<value_t> contract_second_mode(
+thrust::device_vector<value_t> contract_mode(
     const CSFTensor3 &tensor, const DenseMatrix &matrix,
-    const thrust::device_vector<value_t> &in_values, const size_t subchunk_size
+    const thrust::device_vector<value_t> &in_values,
+    const index_t contracted_mode, const size_t subchunk_size
+
 ) {
-  size_t out_num_chunks = tensor.fidx[0].size();
+  size_t out_num_chunks = tensor.fidx[contracted_mode - 1].size();
   size_t out_chunk_size = matrix.ncols * subchunk_size;
   // fmt::print("\nnum_chunks = {}; chunk_size = {}; matrix.ncols = {}; subchunk_size = {}\n", out_num_chunks, out_chunk_size, matrix.ncols, subchunk_size);
   thrust::device_vector<value_t> out_values(out_num_chunks * out_chunk_size);
-  auto threads = dim3(matrix.ncols, 1024 / matrix.ncols);
+  auto threads = dim3(
+    matrix.ncols,
+    std::min(1024.0 / matrix.ncols, (double) subchunk_size));
   auto grid = dim3(
     out_num_chunks
     // (subchunk_size + threads.x - 1) / threads.x,
@@ -84,17 +88,18 @@ thrust::device_vector<value_t> contract_second_mode(
 
   GPUTimer timer;
   timer.start();
-  // fmt::print("U = {}\n", matrix.d_values);
       
   ttm_semisparse_kernel<<<grid, threads>>>(
-      thrust::raw_pointer_cast(tensor.fptr[0].data()), thrust::raw_pointer_cast(tensor.fidx[1].data()),
+      thrust::raw_pointer_cast(tensor.fptr[contracted_mode].data()),
+      thrust::raw_pointer_cast(tensor.fidx[contracted_mode].data()),
       matrix.nrows, matrix.ncols, out_num_chunks, out_chunk_size, subchunk_size,
-      thrust::raw_pointer_cast(out_values.data()), thrust::raw_pointer_cast(in_values.data()),
+      thrust::raw_pointer_cast(out_values.data()),
+      thrust::raw_pointer_cast(in_values.data()),
       thrust::raw_pointer_cast(matrix.d_values.data())
   );
   auto time = timer.seconds();
   fmt::print(
-      "Second_contraction<<<({}, {}),({}, {})>>>\n\t  executed in {} [s]\n", grid.x,
+      "Mode_contraction<<<({}, {}),({}, {})>>>\n\t  executed in {} [s]\n", grid.x,
       grid.y, threads.x, threads.y, time
   );
   cudaError_t err = cudaGetLastError();
@@ -124,15 +129,9 @@ thrust::device_vector<value_t> contract_last_mode(
   GPUTimer timer;
   timer.start();
 
-  // Only one fiber left
-  thrust::host_vector<index_t> h_fptr(2, 0);
-  h_fptr.back() = tensor.fidx[0].size();
-  // fmt::print("\nh_fptr = {}\n", h_fptr);
-  auto d_fptr = thrust::device_vector<index_t>(h_fptr);
-  // thrust::sequence(d_fptr.begin(), d_fptr.end());
-      
   ttm_semisparse_kernel<<<grid, threads>>>(
-      thrust::raw_pointer_cast(d_fptr.data()), thrust::raw_pointer_cast(tensor.fidx[0].data()),
+      thrust::raw_pointer_cast(tensor.fptr.front().data()),
+      thrust::raw_pointer_cast(tensor.fidx.front().data()),
       matrix.nrows, matrix.ncols, out_num_chunks, out_chunk_size, subchunk_size,
       thrust::raw_pointer_cast(out_values.data()), thrust::raw_pointer_cast(in_values.data()),
       thrust::raw_pointer_cast(matrix.d_values.data())
@@ -151,20 +150,26 @@ thrust::device_vector<value_t> contract_last_mode(
 thrust::device_vector<value_t> ttm_chain(
     const CSFTensor3 &tensor, std::vector<DenseMatrix> &factor_matrices
 ) {
+  std::vector<index_t> subchunk_sizes(tensor.nmodes, 1);
+  for (unsigned i = tensor.nmodes - 1; i > 0; --i) {
+    subchunk_sizes[i-1] = subchunk_sizes[i] * factor_matrices[tensor.mode_permutation[i]].ncols;
+  }
+
   // Contract First Mode
-  auto out_first = contract_first_mode(
+  auto prev = contract_first_mode(
       tensor, factor_matrices[tensor.mode_permutation.back()]
   );
-  // fmt::print("out_first = {}\n", out_first);
-  auto subchunk_size = factor_matrices[tensor.mode_permutation.back()].ncols;
-  // Contract Second Mode
-  auto out_second = contract_second_mode(
-      tensor,
-      factor_matrices[tensor.mode_permutation[1]],
-      out_first, subchunk_size
-  );
+  
+  thrust::device_vector<value_t> tmp;
+  // Contract Other Modes
+  for (unsigned i = tensor.nmodes - 2; i > 0; --i) {
+    tmp = contract_mode(
+        tensor,
+        factor_matrices[tensor.mode_permutation[i]],
+        prev, i, subchunk_sizes[i]
+    );
+    std::swap(tmp, prev);
+  }
 
-  subchunk_size *= factor_matrices[tensor.mode_permutation[1]].ncols;
-
-  return out_second;
+  return prev;
 }

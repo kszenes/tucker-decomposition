@@ -62,7 +62,7 @@ CSFTensor3::CSFTensor3(const COOTensor3 &coo_tensor, const unsigned &mode)
   );
   fmt::print("Permutation = {}\n", mode_permutation);
   
-  fptr.resize(nmodes - 1);
+  fptr.resize(nmodes);
   fidx.resize(nmodes);
   // Copy tmp coo_modes for csf construction
   std::vector<thrust::device_vector<index_t>> coo_modes(nmodes);
@@ -111,15 +111,15 @@ void CSFTensor3::buildCSFTensor3(
 
     // fmt::print("First compression:\n{}\n{}\n", coo_modes[0], coo_modes[1]);
     // First compression
-    fptr[2].resize(coo_modes[0].size());
-    thrust::sequence(fptr[2].begin(), fptr[2].end(), 0);
-    index_t largest_index = fptr[2].back() + 1;
+    fptr[3].resize(coo_modes[0].size());
+    thrust::sequence(fptr[3].begin(), fptr[3].end(), 0);
+    index_t largest_index = fptr[3].back() + 1;
     auto [first, second] = thrust::unique_by_key(
-        zip3d_in, zip3d_in + nnz, fptr[2].begin()
+        zip3d_in, zip3d_in + coo_modes[0].size(), fptr[3].begin()
     );
-    auto num_fibers = thrust::distance(fptr[2].begin(), second);
+    auto num_fibers = thrust::distance(fptr[3].begin(), second);
     *second = largest_index;
-    fptr[2].resize(num_fibers + 1);
+    fptr[3].resize(num_fibers + 1);
     coo_modes[0].resize(num_fibers);
     coo_modes[1].resize(num_fibers);
     coo_modes[2].resize(num_fibers);
@@ -130,15 +130,15 @@ void CSFTensor3::buildCSFTensor3(
 
   // fmt::print("First compression:\n{}\n{}\n", coo_modes[0], coo_modes[1]);
   // First compression
-  fptr[1].resize(coo_modes[0].size());
-  thrust::sequence(fptr[1].begin(), fptr[1].end(), 0);
-  index_t largest_index = fptr[1].back() + 1;
+  fptr[2].resize(coo_modes[0].size());
+  thrust::sequence(fptr[2].begin(), fptr[2].end(), 0);
+  index_t largest_index = fptr[2].back() + 2;
   auto [first, second] = thrust::unique_by_key(
-      zip2d_in, zip2d_in + nnz, fptr[1].begin()
+      zip2d_in, zip2d_in + coo_modes[0].size(), fptr[2].begin()
   );
-  auto num_fibers = thrust::distance(fptr[1].begin(), second);
+  auto num_fibers = thrust::distance(fptr[2].begin(), second);
   *second = largest_index;
-  fptr[1].resize(num_fibers + 1);
+  fptr[2].resize(num_fibers + 1);
   coo_modes[0].resize(num_fibers);
   coo_modes[1].resize(num_fibers);
   // TODO: resizing coo_modes is not strictly necessary
@@ -147,17 +147,21 @@ void CSFTensor3::buildCSFTensor3(
 
   // fmt::print("Second compression:\n{}\n\n", coo_modes[0]);
   // Second compression
-  fptr[0].resize(coo_modes[0].size());
-  thrust::sequence(fptr[0].begin(), fptr[0].end(), 0);
-  largest_index = fptr[0].back() + 1;
+  fptr[1].resize(coo_modes[0].size());
+  thrust::sequence(fptr[1].begin(), fptr[1].end(), 0);
+  largest_index = fptr[1].back() + 1;
   auto ret = thrust::unique_by_key(
-      coo_modes[0].begin(), coo_modes[0].end(), fptr[0].begin()
+      coo_modes[0].begin(), coo_modes[0].end(), fptr[1].begin()
   );
-  num_fibers = thrust::distance(fptr[0].begin(), ret.second);
+  num_fibers = thrust::distance(fptr[1].begin(), ret.second);
   *ret.second = largest_index;
   coo_modes[0].resize(num_fibers);
-  fptr[0].resize(num_fibers + 1);
+  fptr[1].resize(num_fibers + 1);
   copy_thrust(fidx[0], coo_modes[0]);
+
+  thrust::host_vector<index_t> h_fptr(2, 0);
+  h_fptr.back() = fidx.front().size();
+  fptr.front() = h_fptr;
 }
 
 void CSFTensor3::print() const {
