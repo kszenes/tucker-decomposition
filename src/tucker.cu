@@ -21,7 +21,7 @@ void tucker_decomp(COOTensor3 &X, const std::vector<index_t> &ranks) {
     fmt::print("Initializing mode {} CSF and Factors\n", mode);
     CSFTensors.emplace_back(X, mode);
     // CSFTensors[mode].print();
-    factor_matrices.emplace_back(X.shape[mode], ranks[mode], "random");
+    factor_matrices.emplace_back(X.shape[mode], ranks[mode], "random_seed");
     // factor_matrices.emplace_back("/users/kszenes/ParTI/tucker-decomp/example_tensors/dense_5_5.tns", true);
     // factor_matrices.emplace_back("/users/kszenes/ParTI/tucker-decomp/example_tensors/dense_5_2.tns", true);
     // factor_matrices[mode].print();
@@ -127,7 +127,7 @@ void tucker_decomp(COOTensor3 &X, const std::vector<index_t> &ranks) {
     if(iter != 0 && fitchange < tol) {
 
       fmt::print("\n\n === CONVERGED === \n\n");
-      // print_verification_script(X, CSFTensors, factor_matrices, coreTensor);
+      print_verification_script(X, CSFTensors, factor_matrices, coreTensor);
       break;
 
     }

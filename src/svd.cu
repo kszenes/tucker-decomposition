@@ -1,11 +1,17 @@
 #include "svd.cuh"
 
+enum class SVD_routine {
+  vanilla,
+  jacobi,
+  polar
+};
 
 thrust::device_vector<value_t> transpose_matrix(
   const cublasHandle_t& cublasH,
   const thrust::device_vector<value_t>& matrix,
   const int ldm
 ) {
+  fmt::print("TRANSPOSING MATRIX\n");
   const double alpha = 1.0;
   const double beta = 0.0;
   const int ldc = matrix.size() / ldm;
@@ -31,12 +37,11 @@ thrust::host_vector<value_t> call_svd(
   int info = 0;
   value_t work_query = 0.0;
   int lwork = -1;
-  thrust::host_vector<value_t> U(nrows * nrows);
   GPUTimer timer;
   if (only_U) {
     info = LAPACKE_dgesvd_work(
-        LAPACK_ROW_MAJOR, 'A', 'N', nrows, ncols, matrix.data(), ncols,
-        S.data(), U.data(), nrows, nullptr, 1, &work_query, lwork
+        LAPACK_ROW_MAJOR, 'S', 'N', nrows, ncols, matrix.data(), ncols,
+        S.data(), nullptr, nrows, nullptr, 1, &work_query, lwork
     );
     if (info != 0) {
       std::runtime_error("SVD failed!");
@@ -45,8 +50,8 @@ thrust::host_vector<value_t> call_svd(
     std::vector<value_t> work(lwork);
     timer.start();
     info = LAPACKE_dgesvd_work(
-        LAPACK_ROW_MAJOR, 'A', 'N', nrows, ncols, matrix.data(), ncols,
-        S.data(), U.data(), nrows, nullptr, 1, work.data(), lwork
+        LAPACK_ROW_MAJOR, 'S', 'N', nrows, ncols, matrix.data(), ncols,
+        S.data(), nullptr, nrows, nullptr, 1, work.data(), lwork
     );
     auto time = timer.seconds();
     fmt::print("SVD: executed in {} [s]\n", time);
@@ -54,7 +59,9 @@ thrust::host_vector<value_t> call_svd(
       std::runtime_error("SVD failed!");
     }
     // fmt::print("U = {}\nS = {}\n", U, S);
+    return matrix;
   } else {
+    thrust::host_vector<value_t> U(nrows * nrows);
     thrust::host_vector<value_t> VT(ncols * ncols);
     info = LAPACKE_dgesvd_work(
         LAPACK_ROW_MAJOR, 'A', 'A', nrows, ncols, matrix.data(), ncols,
@@ -76,8 +83,8 @@ thrust::host_vector<value_t> call_svd(
       std::runtime_error("SVD failed!");
     }
     // fmt::print("U = {}\nS = {}\nVT = {}\n", U, S, VT);
+    return U;
   }
-  return U;
 }
 
 thrust::device_vector<value_t> call_svd(
@@ -99,7 +106,6 @@ thrust::device_vector<value_t> call_svd(
 
     const bool need_transpose = svd_cols < svd_rows;
     if (need_transpose) {
-      fmt::print("TRANSPOSING MATRIX\n");
       jobu = 'O';
       jobvt = 'N';
       ssp_copy = transpose_matrix(cublasH, sspTensor, svd_cols);
@@ -121,6 +127,8 @@ thrust::device_vector<value_t> call_svd(
     CUDA_CHECK(cudaMalloc(reinterpret_cast<void **>(&devInfo), sizeof(int)));
 
 
+    GPUTimer svd_timer;
+    svd_timer.start();
     CUDA_CHECK(cusolverDnDgesvd(
       cusolverH, jobu, jobvt, m, n,
       thrust::raw_pointer_cast(ssp_copy.data()), m,
@@ -128,6 +136,8 @@ thrust::device_vector<value_t> call_svd(
       nullptr, m, 
       nullptr, n,
       d_work, lwork, d_rwork, devInfo));
+    auto svd_time = svd_timer.seconds();
+    fmt::print("cuSOLVER Vanilla SVD routine: {} [s]\n", svd_time);
     // fmt::print("devInfo = {}\n", *devInfo);
     // if (code != CUSOLVER_STATUS_SUCCESS) {
     //   fmt::print("cuSOLVER error #{} with devInfo: {}\n", code, *devInfo);
@@ -140,6 +150,7 @@ thrust::device_vector<value_t> call_svd(
     return need_transpose ? transpose_matrix(cublasH, ssp_copy, svd_rows) : ssp_copy;
 }
 thrust::device_vector<value_t> call_svdj(
+    const cublasHandle_t& cublasH,
     const cusolverDnHandle_t& cusolverH,
     thrust::device_vector<value_t> &sspTensor,
     const size_t svd_rows,
@@ -154,14 +165,15 @@ thrust::device_vector<value_t> call_svdj(
     const double tol = 1.e-7;
     const int max_sweeps = 15;
     const cusolverEigMode_t jobz = CUSOLVER_EIG_MODE_VECTOR; // compute eigenvectors.
-    const int econ = 0;                                      /* econ = 1 for economy size */
+    const int econ = 1;                                      /* econ = 1 for economy size */
     /* numerical results of gesvdj  */
     double residual = 0;
     int executed_sweeps = 0;
 
-    thrust::device_vector<double> Usvd(svd_rows * svd_rows); // Actually V
-    thrust::device_vector<double> Vsvd(svd_cols * svd_cols); // Actually U
-    thrust::device_vector<double> S(std::min(svd_rows, svd_cols));
+    auto svd_min = std::min(svd_rows, svd_cols);
+    thrust::device_vector<double> Usvd(svd_rows * svd_min); // Actually V
+    thrust::device_vector<double> Vsvd(svd_cols * svd_min); // Actually U
+    thrust::device_vector<double> S(svd_min);
     thrust::device_vector<double> ssp_copy(sspTensor);
 
     /* step 2: configuration of gesvdj */
@@ -200,7 +212,7 @@ thrust::device_vector<value_t> call_svdj(
         thrust::raw_pointer_cast(Usvd.data()), svd_rows,
         d_work, lwork, devInfo, gesvdj_params));
     auto time = timer.seconds();
-    fmt::print("cuSOLVER SVD exectued in {} [s]\n", time);
+    fmt::print("cuSOLVER Jacobi SVD routine: {} [s]\n", time);
 
     CUDA_CHECK(cusolverDnXgesvdjGetSweeps(cusolverH, gesvdj_params, &executed_sweeps));
     CUDA_CHECK(cusolverDnXgesvdjGetResidual(cusolverH, gesvdj_params, &residual));
@@ -209,7 +221,85 @@ thrust::device_vector<value_t> call_svdj(
 
     CUDA_CHECK(cudaFree(devInfo));
     CUDA_CHECK(cudaFree(d_work));
-    return Usvd;
+
+    return transpose_matrix(cublasH, Usvd, svd_rows);
+    // return Usvd;
+}
+
+thrust::device_vector<value_t> call_svdp(
+    const cublasHandle_t& cublasH,
+    const cusolverDnHandle_t& cusolverH,
+    thrust::device_vector<value_t> &sspTensor,
+    const size_t svd_rows,
+    const size_t svd_cols
+) {
+    size_t d_lwork = 0;
+    size_t h_lwork = 0;
+    void *d_work = nullptr;
+    void *h_work = nullptr;
+    int *devInfo = nullptr;
+
+    /* configuration of gesvdj  */
+    const cusolverEigMode_t jobz = CUSOLVER_EIG_MODE_VECTOR; // compute eigenvectors.
+    const int econ = 1;                                      /* econ = 1 for economy size */
+    double h_err_sigma;
+    /* numerical results of gesvdj  */
+
+    auto svd_min = std::min(svd_rows, svd_cols);
+    thrust::device_vector<double> Usvd(svd_rows * svd_min); // Actually V
+    thrust::device_vector<double> Vsvd(svd_cols * svd_min); // Actually U
+    thrust::device_vector<double> S(svd_min);
+    thrust::device_vector<double> ssp_copy(sspTensor);
+
+    std::printf("econ = %d \n", econ);
+
+    /* step 4: query working space of SVD */
+    CUDA_CHECK(cusolverDnXgesvdp_bufferSize(
+        cusolverH, NULL, jobz, econ, svd_cols, svd_rows,
+        CUDA_R_64F,        
+        thrust::raw_pointer_cast(ssp_copy.data()), svd_cols,             
+        CUDA_R_64F,
+        thrust::raw_pointer_cast(S.data()),
+        CUDA_R_64F,
+        thrust::raw_pointer_cast(Vsvd.data()), svd_cols,
+        CUDA_R_64F,
+        thrust::raw_pointer_cast(Usvd.data()), svd_rows,
+        CUDA_R_64F,
+        &d_lwork, &h_lwork));
+    // NOTE: in order to compute U using row major, compute V instead!
+    CUDA_CHECK(cudaMalloc(reinterpret_cast<void **>(&d_work), sizeof(double) * d_lwork));
+    if (0 < h_lwork) {
+      h_work = reinterpret_cast<void *>(malloc(h_lwork));
+      if (d_work == nullptr) {
+          throw std::runtime_error("Error: d_work not allocated.");
+      }
+    }
+
+    GPUTimer timer;
+    timer.start();
+    CUDA_CHECK(cusolverDnXgesvdp(
+        cusolverH, NULL, jobz, econ, svd_cols, svd_rows,
+        CUDA_R_64F,        
+        thrust::raw_pointer_cast(ssp_copy.data()), svd_cols,             
+        CUDA_R_64F,
+        thrust::raw_pointer_cast(S.data()),
+        CUDA_R_64F,
+        thrust::raw_pointer_cast(Vsvd.data()), svd_cols,
+        CUDA_R_64F,
+        thrust::raw_pointer_cast(Usvd.data()), svd_rows,
+        CUDA_R_64F,
+        d_work, d_lwork, h_work,  h_lwork,
+        devInfo, &h_err_sigma));
+    auto time = timer.seconds();
+    fmt::print("cuSOLVER POLAR SVD routine: {} [s]\n", time);
+
+
+    CUDA_CHECK(cudaFree(devInfo));
+    CUDA_CHECK(cudaFree(d_work));
+    free(h_work);
+
+    return transpose_matrix(cublasH, Usvd, svd_rows);
+    // return Usvd;
 }
 
 void svd(
@@ -230,17 +320,40 @@ void svd(
     CUDA_CHECK(cusolverDnCreate(&cusolverH));
 
     // fmt::print("\nsspTensor = {}\n", sspTensor);
-    const auto Usvd = call_svd(cublasH, cusolverH, sspTensor, svd_rows, svd_cols);
-    // const auto Usvd = call_svdj(cusolverH, sspTensor, svd_rows, svd_cols);
-
-    // TODO: Remove fill, only needed for tensors with 0 fibers
-    thrust::fill(U_to_update.d_values.begin(), U_to_update.d_values.end(), 0);
-    for (unsigned row = 0; row < svd_rows; row++) {
-      auto offset_it = Usvd.begin() + row * svd_cols;
-      thrust::copy(offset_it, offset_it + U_to_update.ncols,
-                   U_to_update.d_values.begin() + (last_mode[row] * U_to_update.ncols));
+    SVD_routine routine = SVD_routine::vanilla;
+    switch (routine) {
+      case SVD_routine::vanilla: {
+        const auto Usvd = call_svd(cublasH, cusolverH, sspTensor, svd_rows, svd_cols);
+        for (unsigned row = 0; row < svd_rows; row++) {
+          auto offset_it = Usvd.begin() + row * svd_cols;
+          thrust::copy(offset_it, offset_it + U_to_update.ncols,
+                      U_to_update.d_values.begin() + (last_mode[row] * U_to_update.ncols));
+        }
+        break;
+      }
+      case SVD_routine::jacobi: {
+        const auto Usvd = call_svdj(cublasH, cusolverH, sspTensor, svd_rows, svd_cols);
+        for (unsigned row = 0; row < svd_rows; row++) {
+          auto offset_it = Usvd.begin() + row * std::min(svd_rows, svd_cols);
+          thrust::copy(offset_it, offset_it + U_to_update.ncols,
+                      U_to_update.d_values.begin() + (last_mode[row] * U_to_update.ncols));
+        }
+        break;
+      }
+      case SVD_routine::polar: {
+        const auto Usvd = call_svdp(cublasH, cusolverH, sspTensor, svd_rows, svd_cols);
+        for (unsigned row = 0; row < svd_rows; row++) {
+          auto offset_it = Usvd.begin() + row * std::min(svd_rows, svd_cols);
+          thrust::copy(offset_it, offset_it + U_to_update.ncols,
+                      U_to_update.d_values.begin() + (last_mode[row] * U_to_update.ncols));
+        }
+        break;
+      }
+      default:
+        std::runtime_error("Unknown SVD routine\n");
     }
-    // fmt::print("\nu_update = {}\n", U_to_update.d_values);
+    // TODO: Remove fill, only needed for tensors with 0 fibers
+    // thrust::fill(U_to_update.d_values.begin(), U_to_update.d_values.end(), 0);
     CUDA_CHECK(cusolverDnDestroy(cusolverH));
     CUDA_CHECK(cublasDestroy(cublasH));
   } else {
@@ -252,14 +365,11 @@ void svd(
 
     // TODO: Fill with zeros needed since values non zero at the beginning
     // FIX:  Initialize appropriate rows to zero
-    thrust::fill(U_to_update.h_values.begin(), U_to_update.h_values.end(), 0);
-    
+    // thrust::fill(U_to_update.h_values.begin(), U_to_update.h_values.end(), 0);
     for (unsigned row = 0; row < svd_rows; row++) {
-      auto offset_it = Usvd.begin() + (row * last_mode.size());
+      auto offset_it = Usvd.begin() + row * svd_cols;
       thrust::copy(offset_it, offset_it + U_to_update.ncols,
-                   U_to_update.h_values.begin() + (last_mode[row] * U_to_update.ncols));
+                   U_to_update.d_values.begin() + (last_mode[row] * U_to_update.ncols));
     }
-    U_to_update.to_device();
-    // fmt::print("U_to_update = {}\n", U_to_update.d_values);
   }
 }
