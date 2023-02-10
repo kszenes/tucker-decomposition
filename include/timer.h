@@ -2,6 +2,22 @@
 #define TIMER_H
 
 #include <cuda_runtime.h>
+#include <chrono>
+
+struct CPUTimer
+{
+    void start() {
+        start_ = std::chrono::high_resolution_clock::now();
+    }
+
+    float seconds() {
+        stop_ = std::chrono::high_resolution_clock::now();
+        std::chrono::duration<float> diff = stop_ - start_;
+        return diff.count();
+    }
+    private:
+    std::chrono::time_point<std::chrono::high_resolution_clock> start_, stop_;
+};
 
 struct GPUTimer
 {

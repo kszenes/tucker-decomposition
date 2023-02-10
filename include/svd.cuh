@@ -19,7 +19,9 @@ void svd(
   thrust::device_vector<value_t>& sspTensor,
   DenseMatrix& U_to_update,
   const index_t subchunkSize,
-  const bool on_gpu
+  const bool on_gpu,
+  const cusolverDnHandle_t cusolverH,
+  const cublasHandle_t cublasH
 );
 
 #endif /* SVD_H */

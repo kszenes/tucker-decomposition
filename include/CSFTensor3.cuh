@@ -14,7 +14,7 @@ public:
   );
   void print() const;
 
-  value_t norm() const;
+  value_t sqnorm() const;
 
   index_t nmodes;
   index_t nnz;

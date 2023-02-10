@@ -182,11 +182,8 @@ void CSFTensor3::print() const {
   fmt::print("\n");
 }
 
-value_t CSFTensor3::norm() const {
-  return std::sqrt(
-    thrust::transform_reduce(
-      d_values.begin(), d_values.end(),
-      thrust::square<value_t>(), 0.0, thrust::plus<value_t>()
-    )
-  );
+value_t CSFTensor3::sqnorm() const {
+  return thrust::transform_reduce(
+    d_values.begin(), d_values.end(),
+    thrust::square<value_t>(), 0.0, thrust::plus<value_t>());
 }

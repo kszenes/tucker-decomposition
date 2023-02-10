@@ -1,65 +1,61 @@
 #include "COOTensor3.cuh"
+#include <cstdio>
+#include <cstdlib>
+#include <string>
 
 COOTensor3::COOTensor3(const std::string &filename, const bool starts_at_zero)
     : chunk_size(1) {
-  GPUTimer timer;
-  timer.start();
   fmt::print("Reading sparse tensor from: {}\n", filename);
-  std::ifstream ifile(filename);
-  unsigned num_nz = 0, num_modes = 0;
+  FILE* ifile = fopen(filename.c_str(), "r");
+  char* line = nullptr;
+  char* ptr = nullptr;
+  size_t line_size = 0;
+
   index_t index(0);
   value_t value(0.0);
 
-  if (!ifile.is_open()) {
+  if (!ifile) {
     fmt::print(stderr, "Failed to open {}\n", filename);
     exit(1);
   }
 
-  ifile >> num_nz >> num_modes;
-  nnz = num_nz;
-  nmodes = num_modes;
+  getline(&line, &line_size, ifile);
+  nnz = strtoul(line, &line, 10);
+  getline(&line, &line_size, ifile);
+  nmodes = strtoul(line, &line, 10);
+
   fmt::print("Mode {} Tensor with {} non_zero elements\n", nmodes, nnz);
 
   h_modes.resize(nmodes);
-  for (auto &e : h_modes)
+  for (auto &e : h_modes) {
     e.resize(nnz);
+  }
 
   shape.resize(nmodes);
-  mode_permutation.resize(nmodes);
+  getline(&line, &line_size, ifile);
   for (unsigned i = 0; i < nmodes; ++i) {
-    if (!(ifile >> index)) {
-      fmt::print(stderr, "Error occured during reading of tensor");
-      exit(1);
-    };
-    shape[i] = index;
-    mode_permutation[i] = i;
+    shape[i] = strtoul(line, &line, 10);
   }
 
   fmt::print("With modes: {}\n", shape);
 
   h_values.resize(nnz);
   for (unsigned i = 0; i < nnz; ++i) {
+    getline(&line, &line_size, ifile);
+    ptr = line;
     for (unsigned mode = 0; mode < nmodes; ++mode) {
-      if (!(ifile >> index)) {
-        fmt::print(stderr, "Error occured during reading of tensor");
-        exit(1);
-      };
+      index = strtoul(ptr, &ptr, 10);
       index -= starts_at_zero ? 1 : 0;
       h_modes[mode][i] = index;
     }
-    if (!(ifile >> value)) {
-      fmt::print(stderr, "Error occured during reading of tensor");
-      exit(1);
-    }
+    value = strtod(ptr, &ptr);
     h_values[i] = value;
   }
 
   // Copy to device
   to_device();
 
-  ifile.close();
-  auto time = timer.seconds();
-  fmt::print("Loaded COO tensor in {} [s]\n", time);
+  fclose(ifile);
 }
 
 COOTensor3::COOTensor3(
@@ -103,10 +99,6 @@ void COOTensor3::print() {
   for (const auto &e : shape)
     output += std::to_string(e) + ", ";
   output += ")\n";
-  output += "permutation: [";
-  for (const auto &e : mode_permutation)
-    output += std::to_string(e) + ", ";
-  output += "]\n";
   for (unsigned i = 0; i < nnz; ++i) {
     for (const auto &e : h_modes)
       output += std::to_string(e[i]) + '\t';

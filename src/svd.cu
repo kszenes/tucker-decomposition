@@ -1,7 +1,7 @@
 #include "svd.cuh"
 
 enum class SVD_routine {
-  vanilla,
+  qr,
   jacobi,
   polar
 };
@@ -185,10 +185,10 @@ thrust::device_vector<value_t> call_svdj(
     /* default value of max. sweeps is 100 */
     CUDA_CHECK(cusolverDnXgesvdjSetMaxSweeps(gesvdj_params, max_sweeps));
 
-    fmt::print("svd_rows = {}, svd_cols = {}\n", svd_rows, svd_cols);
-    std::printf("tol = %E, default value is machine zero \n", tol);
-    std::printf("max. sweeps = %d, default value is 100\n", max_sweeps);
-    std::printf("econ = %d \n", econ);
+    // fmt::print("svd_rows = {}, svd_cols = {}\n", svd_rows, svd_cols);
+    // std::printf("tol = %E, default value is machine zero \n", tol);
+    // std::printf("max. sweeps = %d, default value is 100\n", max_sweeps);
+    // std::printf("econ = %d \n", econ);
 
     /* step 4: query working space of SVD */
     CUDA_CHECK(cusolverDnDgesvdj_bufferSize(
@@ -216,8 +216,8 @@ thrust::device_vector<value_t> call_svdj(
 
     CUDA_CHECK(cusolverDnXgesvdjGetSweeps(cusolverH, gesvdj_params, &executed_sweeps));
     CUDA_CHECK(cusolverDnXgesvdjGetResidual(cusolverH, gesvdj_params, &residual));
-    std::printf("residual |A - U*S*V**H|_F = %E \n", residual);
-    std::printf("number of executed sweeps = %d \n", executed_sweeps);
+    // std::printf("residual |A - U*S*V**H|_F = %E \n", residual);
+    // std::printf("number of executed sweeps = %d \n", executed_sweeps);
 
     CUDA_CHECK(cudaFree(devInfo));
     CUDA_CHECK(cudaFree(d_work));
@@ -255,7 +255,8 @@ thrust::device_vector<value_t> call_svdp(
 
     /* step 4: query working space of SVD */
     CUDA_CHECK(cusolverDnXgesvdp_bufferSize(
-        cusolverH, NULL, jobz, econ, svd_cols, svd_rows,
+        cusolverH, NULL,
+        jobz, econ, svd_cols, svd_rows,
         CUDA_R_64F,        
         thrust::raw_pointer_cast(ssp_copy.data()), svd_cols,             
         CUDA_R_64F,
@@ -278,7 +279,8 @@ thrust::device_vector<value_t> call_svdp(
     GPUTimer timer;
     timer.start();
     CUDA_CHECK(cusolverDnXgesvdp(
-        cusolverH, NULL, jobz, econ, svd_cols, svd_rows,
+        cusolverH, NULL,
+        jobz, econ, svd_cols, svd_rows,
         CUDA_R_64F,        
         thrust::raw_pointer_cast(ssp_copy.data()), svd_cols,             
         CUDA_R_64F,
@@ -288,7 +290,7 @@ thrust::device_vector<value_t> call_svdp(
         CUDA_R_64F,
         thrust::raw_pointer_cast(Usvd.data()), svd_rows,
         CUDA_R_64F,
-        d_work, d_lwork, h_work,  h_lwork,
+        d_work, d_lwork, h_work, h_lwork,
         devInfo, &h_err_sigma));
     auto time = timer.seconds();
     fmt::print("cuSOLVER POLAR SVD routine: {} [s]\n", time);
@@ -307,22 +309,19 @@ void svd(
   thrust::device_vector<value_t>& sspTensor,
   DenseMatrix& U_to_update,
   const index_t subchunk_size,
-  const bool on_gpu
+  const bool on_gpu,
+  const cusolverDnHandle_t cusolverH,
+  const cublasHandle_t cublasH
 ) {
   unsigned svd_rows = csf.fidx[0].size();
   unsigned svd_cols = subchunk_size;
   fmt::print("SVD: nrows = {}; ncols = {}\n", svd_rows, svd_cols);
   thrust::host_vector<index_t> last_mode(csf.fidx[0]);
   if (on_gpu) {
-    cusolverDnHandle_t cusolverH;
-    cublasHandle_t cublasH;
-    CUDA_CHECK(cublasCreate(&cublasH));
-    CUDA_CHECK(cusolverDnCreate(&cusolverH));
-
     // fmt::print("\nsspTensor = {}\n", sspTensor);
-    SVD_routine routine = SVD_routine::vanilla;
+    SVD_routine routine = SVD_routine::jacobi;
     switch (routine) {
-      case SVD_routine::vanilla: {
+      case SVD_routine::qr: {
         const auto Usvd = call_svd(cublasH, cusolverH, sspTensor, svd_rows, svd_cols);
         for (unsigned row = 0; row < svd_rows; row++) {
           auto offset_it = Usvd.begin() + row * svd_cols;
@@ -354,8 +353,6 @@ void svd(
     }
     // TODO: Remove fill, only needed for tensors with 0 fibers
     // thrust::fill(U_to_update.d_values.begin(), U_to_update.d_values.end(), 0);
-    CUDA_CHECK(cusolverDnDestroy(cusolverH));
-    CUDA_CHECK(cublasDestroy(cublasH));
   } else {
     thrust::host_vector<value_t> h_sspTensor(sspTensor); 
     thrust::host_vector<value_t> Usvd =

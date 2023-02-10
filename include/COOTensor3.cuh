@@ -19,7 +19,6 @@ public:
   index_t nnz;
   index_t chunk_size;
   std::vector<index_t> shape;
-  std::vector<index_t> mode_permutation;
   std::vector<thrust::device_vector<index_t>> d_modes;
   std::vector<thrust::host_vector<index_t>> h_modes;
   thrust::device_vector<value_t> d_values;
