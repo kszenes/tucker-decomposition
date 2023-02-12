@@ -27,13 +27,15 @@ void call_copy(
   double *__restrict__ out
 ) {
   dim3 threads{
-    32,
+    static_cast<unsigned>(std::min(out_cols, 32)),
     32
   };
   dim3 blocks{
     (out_cols + threads.x - 1) / threads.x,
     (rows + threads.y - 1) / threads.y
   };
+  fmt::print("copy_kernel<<<({},{}),({},{})\n",
+    blocks.x, blocks.y, threads.x, threads.y);
   copy_to_U<<<blocks, threads>>>(
     thrust::raw_pointer_cast(in),
     rows,
