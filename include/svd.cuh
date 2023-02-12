@@ -27,7 +27,8 @@ void svd(
   const index_t subchunkSize,
   const bool on_gpu,
   const cusolverDnHandle_t cusolverH,
-  const cublasHandle_t cublasH
+  const cublasHandle_t cublasH,
+  SVD_routine svd_routine
 );
 
 #endif /* SVD_H */

@@ -1,5 +1,49 @@
 #include "svd.cuh"
 
+__global__
+void copy_to_U(
+  const double *__restrict__ in,
+  const int rows,
+  const int in_cols,
+  const int out_cols,
+  double *__restrict__ out
+) {
+  int tix = threadIdx.x + blockIdx.x * blockDim.x;
+
+  if (tix < out_cols) {
+    for (int tiy = threadIdx.y + blockIdx.y * blockDim.y;
+        tiy < rows;
+        tiy += gridDim.x * gridDim.y) {
+      out[tix + tiy * out_cols] = in[tix + tiy * in_cols];
+    }
+  }
+}
+
+void call_copy(
+  const double *__restrict__ in,
+  const int rows,
+  const int in_cols,
+  const int out_cols,
+  double *__restrict__ out
+) {
+  dim3 threads{
+    32,
+    32
+  };
+  dim3 blocks{
+    (out_cols + threads.x - 1) / threads.x,
+    (rows + threads.y - 1) / threads.y
+  };
+  copy_to_U<<<blocks, threads>>>(
+    thrust::raw_pointer_cast(in),
+    rows,
+    in_cols,
+    out_cols,
+    thrust::raw_pointer_cast(out)
+  );
+  cudaDeviceSynchronize();
+}
+
 thrust::device_vector<value_t> transpose_matrix(
   const cublasHandle_t& cublasH,
   const thrust::device_vector<value_t>& matrix,
@@ -308,48 +352,69 @@ void svd(
   const index_t subchunk_size,
   const bool on_gpu,
   const cusolverDnHandle_t cusolverH,
-  const cublasHandle_t cublasH
+  const cublasHandle_t cublasH,
+  SVD_routine svd_routine
 ) {
   unsigned svd_rows = csf.fidx[0].size();
   unsigned svd_cols = subchunk_size;
   fmt::print("SVD: nrows = {}; ncols = {}\n", svd_rows, svd_cols);
   thrust::host_vector<index_t> last_mode(csf.fidx[0]);
   if (on_gpu) {
-    // fmt::print("\nsspTensor = {}\n", sspTensor);
-    SVD_routine routine = SVD_routine::jacobi;
-    switch (routine) {
+    int cols = 0;
+    switch (svd_routine) {
       case SVD_routine::qr: {
         const auto Usvd = call_svd(cublasH, cusolverH, sspTensor, svd_rows, svd_cols);
-        for (unsigned row = 0; row < svd_rows; row++) {
-          auto offset_it = Usvd.begin() + row * svd_cols;
-          thrust::copy(offset_it, offset_it + U_to_update.ncols,
-                      U_to_update.d_values.begin() + (last_mode[row] * U_to_update.ncols));
-        }
+        // for (unsigned row = 0; row < svd_rows; row++) {
+        //   auto offset_it = Usvd.begin() + row * svd_cols;
+        //   thrust::copy(offset_it, offset_it + U_to_update.ncols,
+        //               U_to_update.d_values.begin() + (last_mode[row] * U_to_update.ncols));
+        // }
+        cols = svd_cols;
+        call_copy(
+            thrust::raw_pointer_cast(Usvd.data()), svd_rows, cols,
+            U_to_update.ncols,
+            thrust::raw_pointer_cast(U_to_update.d_values.data())
+        );
         break;
       }
       case SVD_routine::jacobi: {
         const auto Usvd = call_svdj(cublasH, cusolverH, sspTensor, svd_rows, svd_cols);
-        for (unsigned row = 0; row < svd_rows; row++) {
-          auto offset_it = Usvd.begin() + row * std::min(svd_rows, svd_cols);
-          thrust::copy(offset_it, offset_it + U_to_update.ncols,
-                      U_to_update.d_values.begin() + (last_mode[row] * U_to_update.ncols));
-        }
+        // for (unsigned row = 0; row < svd_rows; row++) {
+        //   auto offset_it = Usvd.begin() + row * std::min(svd_rows, svd_cols);
+        //   thrust::copy(
+        //     offset_it, offset_it + U_to_update.ncols,
+        //     U_to_update.d_values.begin() + (last_mode[row] * U_to_update.ncols));
+        // }
+        cols = std::min(svd_cols, svd_rows);
+        call_copy(
+          thrust::raw_pointer_cast(Usvd.data()),
+          svd_rows,
+          cols,
+          U_to_update.ncols,
+          thrust::raw_pointer_cast(U_to_update.d_values.data())
+        );
         break;
       }
       case SVD_routine::polar: {
         const auto Usvd = call_svdp(cublasH, cusolverH, sspTensor, svd_rows, svd_cols);
-        for (unsigned row = 0; row < svd_rows; row++) {
-          auto offset_it = Usvd.begin() + row * std::min(svd_rows, svd_cols);
-          thrust::copy(offset_it, offset_it + U_to_update.ncols,
-                      U_to_update.d_values.begin() + (last_mode[row] * U_to_update.ncols));
-        }
+        // for (unsigned row = 0; row < svd_rows; row++) {
+        //   auto offset_it = Usvd.begin() + row * std::min(svd_rows, svd_cols);
+        //   thrust::copy(offset_it, offset_it + U_to_update.ncols,
+        //               U_to_update.d_values.begin() + (last_mode[row] * U_to_update.ncols));
+        // }
+        cols = std::min(svd_cols, svd_rows);
+        call_copy(
+          thrust::raw_pointer_cast(Usvd.data()),
+          svd_rows,
+          cols,
+          U_to_update.ncols,
+          thrust::raw_pointer_cast(U_to_update.d_values.data())
+        );
         break;
       }
       default:
         std::runtime_error("Unknown SVD routine\n");
     }
-    // TODO: Remove fill, only needed for tensors with 0 fibers
-    // thrust::fill(U_to_update.d_values.begin(), U_to_update.d_values.end(), 0);
   } else {
     thrust::host_vector<value_t> h_sspTensor(sspTensor); 
     thrust::host_vector<value_t> Usvd =

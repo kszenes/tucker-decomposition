@@ -10,7 +10,7 @@
 struct Params {
   std::vector<index_t> ranks;
   std::string filename;
-  SVD_routine svd_routine = SVD_routine::qr;
+  SVD_routine svd_routine = SVD_routine::jacobi;
   bool print_verification = false;
   int maxiter = 100;
   double tol = 1e-5;

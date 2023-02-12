@@ -1,8 +1,6 @@
 #!/bin/bash
 
 # === ORDER 3 ===
-
-
 FILENAME="/users/kszenes/ParTI/tucker-decomp/example_tensors/nell-2/nell-2.tns"
 RANK=16 
 

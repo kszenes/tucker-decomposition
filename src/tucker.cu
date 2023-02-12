@@ -39,7 +39,7 @@ void tucker_decomp(COOTensor3 &X, const Params& params) {
   std::vector<DenseMatrix> factor_matrices;
   factor_matrices.reserve(X.nmodes);
   for (unsigned mode = 0; mode < X.nmodes; ++mode) {
-    factor_matrices.emplace_back(X.shape[mode], params.ranks[mode], "random");
+    factor_matrices.emplace_back(X.shape[mode], params.ranks[mode], "random_seed");
   }
 
   // === Print fidx and fptr sizes ===
@@ -85,7 +85,8 @@ void tucker_decomp(COOTensor3 &X, const Params& params) {
       svd(
         CSFTensors[mode], sspTensor,
         factor_matrices[CSFTensors[mode].mode_permutation.front()],
-        subchunk_size, use_gpu, cusolverH, cublasH
+        subchunk_size, use_gpu, cusolverH, cublasH,
+        params.svd_routine
       );
       auto svd_time = timers["misc"].seconds();
       fmt::print("SVD completed in {} [s]\n", svd_time);
@@ -129,12 +130,12 @@ void tucker_decomp(COOTensor3 &X, const Params& params) {
     }
   }
   fmt::print("======================\n");
-  fmt::print("Tucker:    {} [s]\n", timings["total"]);
-  fmt::print("CSF:       {} [s]\n", timings["csf"]);
-  fmt::print("TTM:       {} [s]\n", timings["ttm"]);
-  fmt::print("SVD:       {} [s]\n", timings["svd"]);
-  fmt::print("Core:      {} [s]\n", timings["core"]);
-  fmt::print("Fit:      {} [s]\n", timings["fit"]);
+  fmt::print("Tucker:    {:4.5f} [s]\n", timings["total"]);
+  fmt::print("CSF:       {:4.5f} [s]\n", timings["csf"]);
+  fmt::print("TTM:       {:4.5f} [s]\n", timings["ttm"]);
+  fmt::print("SVD:       {:4.5f} [s]\n", timings["svd"]);
+  fmt::print("Core:      {:4.5f} [s]\n", timings["core"]);
+  fmt::print("Fit:       {:4.5f} [s]\n", timings["fit"]);
   CUDA_CHECK(cusolverDnDestroy(cusolverH));
   CUDA_CHECK(cublasDestroy(cublasH));
 } 
