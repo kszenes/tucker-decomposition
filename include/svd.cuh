@@ -9,6 +9,12 @@
 #include <cusolverDn.h>
 #include <cublas_v2.h>
 
+enum class SVD_routine {
+  qr,
+  jacobi,
+  polar
+};
+
 thrust::host_vector<value_t> call_svd(
     thrust::host_vector<value_t> &matrix, const size_t nrows,
     const size_t ncols, const bool only_U = true

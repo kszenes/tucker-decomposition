@@ -1,7 +1,6 @@
 #include "tucker.cuh"
 
-
-void tucker_decomp(COOTensor3 &X, const std::vector<index_t> &ranks, const double tol, const int maxiter) {
+void tucker_decomp(COOTensor3 &X, const Params& params) {
   std::unordered_map<std::string, CPUTimer> timers;
   timers["total"] = CPUTimer();
   timers["misc"] = CPUTimer();
@@ -12,10 +11,11 @@ void tucker_decomp(COOTensor3 &X, const std::vector<index_t> &ranks, const doubl
   timings["svd"] = 0.0f;
   timings["core"] = 0.0f;
   timings["total"] = 0.0f;
+  timings["fit"] = 0.0f;
 
   timers["total"].start();
 
-  assert(X.nmodes == ranks.size() &&
+  assert(X.nmodes == params.ranks.size() &&
          "Number of U sizes does not match X modes");
   auto use_gpu = true;
   cusolverDnHandle_t cusolverH;
@@ -23,11 +23,10 @@ void tucker_decomp(COOTensor3 &X, const std::vector<index_t> &ranks, const doubl
   CUDA_CHECK(cublasCreate(&cublasH));
   CUDA_CHECK(cusolverDnCreate(&cusolverH));
 
-  std::vector<double> fits;
   double core_sqnorm = 0.0;
   // Core tensor size
   auto coreSize = std::accumulate(
-    ranks.begin(), ranks.end(), 1, std::multiplies{});
+    params.ranks.begin(), params.ranks.end(), 1, std::multiplies{});
   // Sorting Xs
   timers["misc"].start();
   std::vector<CSFTensor3> CSFTensors;
@@ -40,7 +39,7 @@ void tucker_decomp(COOTensor3 &X, const std::vector<index_t> &ranks, const doubl
   std::vector<DenseMatrix> factor_matrices;
   factor_matrices.reserve(X.nmodes);
   for (unsigned mode = 0; mode < X.nmodes; ++mode) {
-    factor_matrices.emplace_back(X.shape[mode], ranks[mode], "random");
+    factor_matrices.emplace_back(X.shape[mode], params.ranks[mode], "random");
   }
 
   // === Print fidx and fptr sizes ===
@@ -63,7 +62,7 @@ void tucker_decomp(COOTensor3 &X, const std::vector<index_t> &ranks, const doubl
   auto subchunk_size = coreSize;
   // Iteration loop
   int iter = 0;
-  for (; iter < maxiter; ++iter) {
+  for (; iter < params.maxiter; ++iter) {
     timers["iter"].start();
     fitold = fit;
 
@@ -93,29 +92,38 @@ void tucker_decomp(COOTensor3 &X, const std::vector<index_t> &ranks, const doubl
       timings["svd"] += svd_time;
     }
     timers["misc"].start();
+    // auto coreTensor = contract_last_mode(
+    //     CSFTensors.front(), factor_matrices,
+    //     sspTensor, subchunk_size);
     auto coreTensor = contract_last_mode(
-        CSFTensors.front(), factor_matrices,
+        cublasH, CSFTensors.front(), factor_matrices,
         sspTensor, subchunk_size);
     auto core_time = timers["misc"].seconds();
     timings["core"] += core_time;
 
+    timers["misc"].start();
     core_sqnorm =  thrust::transform_reduce(
       coreTensor.begin(), coreTensor.end(),
       thrust::square{}, 0.0, thrust::plus{});
-    auto iter_time = timers["iter"].seconds();
-    fmt::print("\nIteration completed in {}\n", iter_time);
+    auto time_fit = timers["misc"].seconds();
+    timings["fit"] += time_fit;
 
     auto sqresid = original_sqnorm - core_sqnorm;
     auto resid = std::sqrt(std::max(0.0, sqresid));
     fit = 1 - (resid / std::sqrt(original_sqnorm));
-    fits.push_back(fit);
     auto fitchange = std::abs(fitold - fit);
     fmt::print("fit = {}; fitchange = {}\n", fit, fitchange);
+    fmt::print("Fit computed in {}\n", time_fit);
 
-    if(iter != 0 && fitchange < tol) {
+    auto iter_time = timers["iter"].seconds();
+    fmt::print("\nIteration completed in {}\n", iter_time);
+
+    if(iter != 0 && fitchange < params.tol) {
       timings["total"] = timers["total"].seconds();
       fmt::print("\n\n === CONVERGED in {} Iterations === \n\n", iter);
-      print_verification_script(X, CSFTensors, factor_matrices, coreTensor);
+      if (params.print_verification) {
+        print_verification_script(X, CSFTensors, factor_matrices, coreTensor);
+      }
       break;
 
     }
@@ -126,6 +134,7 @@ void tucker_decomp(COOTensor3 &X, const std::vector<index_t> &ranks, const doubl
   fmt::print("TTM:       {} [s]\n", timings["ttm"]);
   fmt::print("SVD:       {} [s]\n", timings["svd"]);
   fmt::print("Core:      {} [s]\n", timings["core"]);
+  fmt::print("Fit:      {} [s]\n", timings["fit"]);
   CUDA_CHECK(cusolverDnDestroy(cusolverH));
   CUDA_CHECK(cublasDestroy(cublasH));
 } 

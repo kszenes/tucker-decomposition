@@ -5,17 +5,17 @@
 #include <string>
 #include <utility>
 #include <vector>
+#include "svd.cuh"
 
-std::pair<std::string, std::vector<index_t>> parse_args(int argc, char* argv[]) {
-  std::string filename(argv[1]);
+struct Params {
+  std::vector<index_t> ranks;
+  std::string filename;
+  SVD_routine svd_routine = SVD_routine::qr;
+  bool print_verification = false;
+  int maxiter = 100;
+  double tol = 1e-5;
+};
 
-  std::vector<index_t> matrixSizes;
-
-  for (int i = 2; i < argc; ++i) {
-    matrixSizes.push_back(atoi(argv[i]));
-  }
-
-  return std::make_pair(filename, matrixSizes);
-}
+const Params parse_args(int argc, char* argv[]);
 
 #endif /* PARSE_ARGS_H */

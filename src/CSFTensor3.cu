@@ -104,7 +104,7 @@ void CSFTensor3::buildCSFTensor3(
   }
 
   // Set first fiber idx
-  copy_thrust(fidx.back(), coo_modes.back());
+  /* copy_thrust(fidx.back(), coo_modes.back()); */
 
   if (nmodes == 4) {
     auto zip3d_in = thrust::make_zip_iterator(gen_begin_tuple<3>(coo_modes));
@@ -123,7 +123,7 @@ void CSFTensor3::buildCSFTensor3(
     coo_modes[0].resize(num_fibers);
     coo_modes[1].resize(num_fibers);
     coo_modes[2].resize(num_fibers);
-    copy_thrust(fidx[2], coo_modes[2]);
+    /* copy_thrust(fidx[2], coo_modes[2]); */
   }
 
   auto zip2d_in = thrust::make_zip_iterator(gen_begin_tuple<2>(coo_modes));
@@ -143,7 +143,7 @@ void CSFTensor3::buildCSFTensor3(
   coo_modes[1].resize(num_fibers);
   // TODO: resizing coo_modes is not strictly necessary
   //       -> can modify size of fidx[1] directly
-  copy_thrust(fidx[1], coo_modes[1]);
+  /* copy_thrust(fidx[1], coo_modes[1]); */
 
   // fmt::print("Second compression:\n{}\n\n", coo_modes[0]);
   // Second compression
@@ -157,11 +157,12 @@ void CSFTensor3::buildCSFTensor3(
   *ret.second = largest_index;
   coo_modes[0].resize(num_fibers);
   fptr[1].resize(num_fibers + 1);
-  copy_thrust(fidx[0], coo_modes[0]);
+  /* copy_thrust(fidx[0], coo_modes[0]); */
 
   thrust::host_vector<index_t> h_fptr(2, 0);
-  h_fptr.back() = fidx.front().size();
+  h_fptr.back() = coo_modes.front().size();
   fptr.front() = h_fptr;
+  fidx = std::move(coo_modes);
 }
 
 void CSFTensor3::print() const {

@@ -29,4 +29,11 @@ thrust::device_vector<value_t> contract_last_mode(
     const size_t subchunk_size
 );
 
+thrust::device_vector<value_t> contract_last_mode(
+    const cublasHandle_t& cublasH,
+    const CSFTensor3 &tensor,
+    const std::vector<DenseMatrix> &matrices,
+    const thrust::device_vector<value_t> &in_values,
+    const size_t subchunk_size
+);
 #endif /* TTM_H */

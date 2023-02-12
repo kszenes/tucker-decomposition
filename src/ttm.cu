@@ -107,6 +107,37 @@ thrust::device_vector<value_t> contract_mode(
     printf("Error: %s\n", cudaGetErrorString(err));
   return out_values;
 }
+thrust::device_vector<value_t> contract_last_mode(
+    const cublasHandle_t& cublasH,
+    const CSFTensor3 &tensor,
+    const std::vector<DenseMatrix> &matrices,
+    const thrust::device_vector<value_t> &in_values,
+    const size_t subchunk_size
+) {
+  auto mode = tensor.mode_permutation.front();
+  auto& matrix = matrices[mode];
+
+  auto m = subchunk_size;
+  auto n = matrix.ncols;
+  auto k = matrix.nrows;
+
+  const double alpha = 1.0;
+  const double beta = 0.0;
+
+  thrust::device_vector<value_t> out_values(m * n);
+
+  CUDA_CHECK(cublasDgemm(
+    cublasH, CUBLAS_OP_N, CUBLAS_OP_T,
+    m, n, k,
+    &alpha,
+    thrust::raw_pointer_cast(in_values.data()), m,
+    thrust::raw_pointer_cast(matrix.d_values.data()), n,
+    &beta,
+    thrust::raw_pointer_cast(out_values.data()), m
+  ));
+  return out_values;
+
+}
 
 thrust::device_vector<value_t> contract_last_mode(
     const CSFTensor3 &tensor, const std::vector<DenseMatrix> &matrices,
@@ -133,7 +164,8 @@ thrust::device_vector<value_t> contract_last_mode(
       thrust::raw_pointer_cast(tensor.fptr.front().data()),
       thrust::raw_pointer_cast(tensor.fidx.front().data()),
       matrix.nrows, matrix.ncols, out_num_chunks, out_chunk_size, subchunk_size,
-      thrust::raw_pointer_cast(out_values.data()), thrust::raw_pointer_cast(in_values.data()),
+      thrust::raw_pointer_cast(out_values.data()),
+      thrust::raw_pointer_cast(in_values.data()),
       thrust::raw_pointer_cast(matrix.d_values.data())
   );
   auto time = timer.seconds();

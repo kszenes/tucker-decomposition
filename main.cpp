@@ -1,3 +1,4 @@
+#include "parse_args.hpp"
 #include "COOTensor3.cuh"
 #include "CSFTensor3.cuh"
 #include "DenseMatrix.cuh"
@@ -9,21 +10,18 @@
 #include <memory>
 #include <mkl_lapacke.h>
 #include <string>
-#include "parse_args.hpp"
 
 int main(int argc, char* argv[]) {
-  const auto [filename, matrixSizes] = parse_args(argc, argv);
+  const auto params  = parse_args(argc, argv);
 
   CPUTimer coo_timer;
   coo_timer.start();
   COOTensor3 X(
-    filename,
+    params.filename,
     true
   );
   auto time = coo_timer.seconds();
 
-  const double tol = 1e-5;
-  const int maxiter = 100;
-  tucker_decomp(X, matrixSizes, tol, maxiter);
+  tucker_decomp(X, params);
   fmt::print("COO/IO:    {} [s]\n", time);
 }

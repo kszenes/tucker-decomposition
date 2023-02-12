@@ -1,16 +1,12 @@
 #include "svd.cuh"
 
-enum class SVD_routine {
-  qr,
-  jacobi,
-  polar
-};
-
 thrust::device_vector<value_t> transpose_matrix(
   const cublasHandle_t& cublasH,
   const thrust::device_vector<value_t>& matrix,
   const int ldm
 ) {
+  GPUTimer timer;
+  timer.start();
   fmt::print("TRANSPOSING MATRIX\n");
   const double alpha = 1.0;
   const double beta = 0.0;
@@ -24,6 +20,8 @@ thrust::device_vector<value_t> transpose_matrix(
     &beta, nullptr, ldc,
     thrust::raw_pointer_cast(matrix_T.data()), ldc
   ));
+  auto time = timer.seconds();
+  fmt::print("Transpose completed in {}\n", time);
   return matrix_T;
 }
 
@@ -200,7 +198,6 @@ thrust::device_vector<value_t> call_svdj(
         &lwork, gesvdj_params));
     // NOTE: in order to compute U using row major, compute V instead!
     CUDA_CHECK(cudaMalloc(reinterpret_cast<void **>(&d_work), sizeof(double) * lwork));
-    // TODO: One of the copies is superfluous if jobvt set to 'S'
 
     GPUTimer timer;
     timer.start();

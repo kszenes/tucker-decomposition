@@ -13,7 +13,8 @@
 #include "svd.cuh"
 #include "ttm.cuh"
 #include "numpy_verify.cuh"
+#include "parse_args.hpp"
 
-void tucker_decomp(COOTensor3 &X, const std::vector<index_t> &ranks, const double tol, const int maxiter);
+void tucker_decomp(COOTensor3 &X, const Params& params);
 
 #endif /* TUCKER_H */
